@@ -1,0 +1,176 @@
+
+CIS 520 - Programming Project #1
+
+                   
+---- GROUP ----
+
+Kyle Toom <ktoom@ksu.edu>
+Caden Waters <crwaters@ksu.edu>
+Alex Burroughs <aburroughs97@ksu.edu>
+
+---- PRELIMINARIES ----
+
+Citations:
+
+Dan Andresen lecture slides 1-6
+Pintos Project: Debugging Tools <https://web.stanford.edu/class/cs140/projects/pintos/pintos_10.html>
+
+                 ALARM CLOCK
+                 ===========
+
+---- DATA STRUCTURES ----
+
+>> A1: Copy here the declaration of each new or changed `struct' or
+>> `struct' member, global or static variable, `typedef', or
+>> enumeration.  Identify the purpose of each in 25 words or less.
+
+struct awake_struct
+{
+  struct list_elem elem;
+  int64_t tick;
+  struct thread *thread;
+}; //This holds information about what thread to wake up after ticks have passed and how long to wait;
+
+static struct list awake_list; //the list of awake_structs to eventually wake up
+static struct lock awake_list_lock; //lock that we use to protect the awake_list when we add to it
+
+static struct awake_struct *awake_list_free_stack[100]; //stack of awake_struct that need to have free() called on them
+static int awake_list_free_top = 0; //top of awake_list_free_stack
+
+---- ALGORITHMS ----
+
+>> A2: Briefly describe what happens in a call to your timer_sleep(),
+>> including the effects of the timer interrupt handler.
+
+First, we free any awake_structs that are waiting in the awake_list_free_stack to be released.
+After that, we add the current thread to the awake_list in a sorted order to wake up int64_t ticks from now and then block;
+
+The interrupt handler looks at the next thread to wake up and sees if it is time to wake it up or not, unblocking it if it is time.
+The interrupt handler will keep doing this until there are no threads to wake up.
+
+>> A3: What steps are taken to minimize the amount of time spent in
+>> the timer interrupt handler?
+
+Inside the thread_sleep() function we make sure to add the awake_struct to awake_list in a sorted manner so that we can do the very fast
+operation of removing the awake_struct from the front of the awake_list inside the interrupt handler. Doing any sort of sorting or finding
+of a max in the interrupt handler would take up valuable time.
+
+---- SYNCHRONIZATION ----
+
+>> A4: How are race conditions avoided when multiple threads call
+>> timer_sleep() simultaneously?
+
+We have a lock around the code that adds our awake_struct to the awake_list in order to keep multiple threads
+from adding to it simultaneously.
+We also disabled interrupts before calling thread_block and then re-enabling them after the call.
+
+>> A5: How are race conditions avoided when a timer interrupt occurs
+>> during a call to timer_sleep()?
+
+We avoid race conditions in two ways: we put a lock around the awake_list when we are adding to it,
+and disable interrupts around blocking the thread (as it needs to be called in a non-interrupt mode).
+
+---- RATIONALE ----
+
+>> A6: Why did you choose this design?  In what ways is it superior to
+>> other designs that you considered?
+
+We chose to insert-sorted to the awake_list to minimize the amount of time spent in the timer interrupt handler. We also needed it to be a 
+list to allow multiple threads to sleep at once.
+
+
+
+             PRIORITY SCHEDULING
+             ===================
+
+---- DATA STRUCTURES ----
+
+>> B1: Copy here the declaration of each new or changed `struct' or
+>> `struct' member, global or static variable, `typedef', or
+>> enumeration.  Identify the purpose of each in 25 words or less.
+
+struct thread
+{
+  tid_t tid;
+  enum thread_status status;
+  char name[16];
+  uint8_t *stack;
+  int priority;
+  struct list_elem allelem;  
+  struct list_elem; 
+  
+  int nice;						// the sum of all donated priorities
+  struct list nice_list;		// the list of all nice_structs which has information about donated priorities
+  struct lock *waiting_lock; 	// the lock that a current thread is waiting on, needed for nested priority
+  
+  unsigned magic;
+}
+
+struct nice_struct
+{
+	struct list_elem elem;  		// so it can be put into the nice list. List implementation
+	int value;						// Nice value = priority donated by a given thread
+	struct semaphore *semaphore;	// semaphore that you donated for.
+	struct thread *thread;			// the given thread that donated the priority
+} // The nice_struct holds the information about donated priorities. 
+
+
+>> B2: Explain the data structure used to track priority donation.
+
+The thread structure has three additional properties; int nice, struct list nice_list, struct lock lock_waiting. 
+The nice value holds the total donated priority and the nice_list contains the list of donations by thread value, semaphore
+and the donation's added nice value. The lock_waiting is the reference for handling nested priority donation, is null 
+when not waiting on a lock. When a lock is released, we find the nice donations related to that lock in the nice_list, 
+removed them from the nice list and adjusts nice value accordingly.
+
+
+---- ALGORITHMS ----
+
+>> B3: How do you ensure that the highest priority thread waiting for
+>> a lock, semaphore, or condition variable wakes up first?
+
+We created a comparison function (thread_sort_less, semaphore_sort_less) that we
+could use to find the highest priority thread or semaphore in the data structure's
+list via list_max()
+
+>> B4: Describe the sequence of events when a call to lock_acquire()
+>> causes a priority donation.  How is nested donation handled?
+
+Turn off interrupts, see if we need to donate to the holder of the lock. If true, find the difference in priority that needs to be donated 
+and create a nice struct to store the information in the nice_list and then call nested priority donation. Re-enable interrupts, call sema_down 
+and change the current lock holder to be the current thread.
+
+Nested donations are handled by storing the lock that a thread is waiting on in the thread structure. 
+We then recursively call a function nested_priority_donation which takes the holder of the lock and increases its nice 
+value to account for the changes.
+
+>> B5: Describe the sequence of events when lock_release() is called
+>> on a lock that a higher-priority thread is waiting for.
+
+When a lock is released we first check to make sure that there are no other high-priority threads
+waiting on the current thread to release any other locks. If there is none, then we can safely lower
+our nice to zero, otherwise we can lower our nice, but only to a value that grants us the priority of the
+specified other high-priority thread.
+
+
+---- SYNCHRONIZATION ----
+
+>> B6: Describe a potential race in thread_set_priority() and explain
+>> how your implementation avoids it.  Can you use a lock to avoid
+>> this race?
+
+We disable interrupts for the brief period of time in which we set our nice and our priority, but not when we
+observe if we need to yield or not if we are not the highest-priorities thread, as if we are interrupted then we
+are no longer the highest-priority thread anyways.
+
+Locks would not work because if you're interrupted by a higher priority thread while you're setting your priority, you may
+not get the priority you're asking for, which could be higher than the thread that interrupted you.
+
+---- RATIONALE ----
+
+>> B7: Why did you choose this design?  In what ways is it superior to
+>> another design you considered?
+
+At one point, we thought that we could keep track of the nice donations without keeping a list. However, we found that this
+failed when we needed to not zero out our nice, but change to a lower but positive nice for when other threads were waiting on us
+for different locks. For this we added our nice_list to each thread so it can accurately figure out when to drop its nice and to what value.
