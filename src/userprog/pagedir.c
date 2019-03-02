@@ -261,3 +261,20 @@ invalidate_pagedir (uint32_t *pd)
       pagedir_activate (pd);
     } 
 }
+
+static int user_readable(void * uddr)
+{
+  if(uddr>=PHYS_BASE) return 1;
+  uint32_t * page = lookup_page(thread_current()->pagedir, uddr, false);
+  if(page==NULL) return 1;
+  return 0;
+}
+
+static int user_writable(void * uddr)
+{
+  if(uddr >= PHYS_BASE) return 1;
+  uint32_t * page = lookup_page(thread_current()->pagedir, uddr, false);
+  if(page == NULL) return 1;
+  if(page & PTE_W == 0) return 1;
+  return 0;
+}
