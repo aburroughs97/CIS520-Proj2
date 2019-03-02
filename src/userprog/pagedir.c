@@ -5,6 +5,7 @@
 #include "threads/init.h"
 #include "threads/pte.h"
 #include "threads/palloc.h"
+#include "threads/thread.h"
 
 static uint32_t *active_pd (void);
 static void invalidate_pagedir (uint32_t *);
@@ -275,6 +276,6 @@ static int user_writable(void * uddr)
   if(uddr >= PHYS_BASE) return 0;
   uint32_t * page = lookup_page(thread_current()->pagedir, uddr, false);
   if(page == NULL) return 0;
-  if(page & PTE_W == 0) return 0;
+  if(*page & PTE_W == 0) return 0;
   return 1;
 }
