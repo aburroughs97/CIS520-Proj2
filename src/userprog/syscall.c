@@ -35,6 +35,8 @@ syscall_handler (struct intr_frame *f)
   uint32_t param_1;
   uint32_t param_2;
   uint32_t param_3;
+
+  //Check f
   
   sys_call_num = f->ebp + 4;
   param_1 = f->ebp + 8;
@@ -46,16 +48,16 @@ syscall_handler (struct intr_frame *f)
       halt();
       break;
     case SYS_EXIT:
-      exit(param_1);
+      exit(&param_1);
       break;
     case SYS_EXEC:
       exec(param_1);
       break;  
     case SYS_WAIT:
-      wait(param_1);
+      wait(&param_1);
       break; 
     case SYS_CREATE:
-      create(param_1, param_2);
+      create(param_1, &param_2);
       break;
     case SYS_REMOVE:
       remove(param_1);
@@ -64,22 +66,22 @@ syscall_handler (struct intr_frame *f)
       open(param_1);
       break; 
     case SYS_FILESIZE:
-      filesize(param_1);
+      filesize(&param_1);
       break;
     case SYS_READ:
-      read(param_1, param_2, param_3);
+      read(&param_1, param_2, &param_3);
       break;    
     case SYS_WRITE:
-      write(param_1, param_2, param_3);
+      write(&param_1, param_2, &param_3);
       break;
     case SYS_SEEK:
-      seek(param_1, param_2);
+      seek(&param_1, &param_2);
       break; 
     case SYS_TELL:
-      tell(param_1);
+      tell(&param_1);
       break; 
     case SYS_CLOSE:
-      close(param_1);
+      close(&param_1);
       break; 
   }
 }
