@@ -34,9 +34,7 @@ syscall_handler (struct intr_frame *f)
   uint32_t sys_call_num;
   uint32_t param_1;
   uint32_t param_2;
-  uint32_t param_3;
-
-  //Check f
+  uint32_t param_3;  
   
   sys_call_num = f->ebp + 4;
   param_1 = f->ebp + 8;
@@ -144,10 +142,18 @@ read (int fd, void *buffer, unsigned length)
 int
 write (int fd, const void *buffer, unsigned size)
 {
-  if(fd == 1)
+  if(user_readable(buffer)) 
   {
-    putbuf(buffer, size);
-    return size;
+    if(fd == 1)
+    {
+      putbuf(buffer, size);
+      return size;
+    }
+    //Other stuff
+  }
+  else
+  {
+    thread_exit();
   }
 }
 
