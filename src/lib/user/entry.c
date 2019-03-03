@@ -7,6 +7,7 @@ void _start (int argc, char *argv[]);
 void
 _start (int argc, char *argv[]) 
 {
-  printf("starting\n");
+	char *a[] = { "hi" };
+	argv = a;
   exit (main (argc, argv));
 }

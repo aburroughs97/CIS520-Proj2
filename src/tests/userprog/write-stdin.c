@@ -9,7 +9,6 @@
 void
 test_main (void) 
 {
-  msg("Starting");
   char buf = 123;
-  write (0, &buf, 1);
+  write (1, &buf, 1);
 }
