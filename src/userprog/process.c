@@ -89,7 +89,7 @@ int
 process_wait (tid_t child_tid UNUSED) 
 {
   while(true){
-    // ¯\_(ツ)_/¯
+    //
   }
   return -1;
 }
