@@ -1,4 +1,5 @@
 #include "userprog/pagedir.h"
+#include "userprog/syscall.h"
 #include <stdbool.h>
 #include <stddef.h>
 #include <string.h>
@@ -263,7 +264,7 @@ invalidate_pagedir (uint32_t *pd)
     } 
 }
 
-static int user_readable(void * uddr)
+int user_readable(void * uddr)
 {
   if(uddr>=PHYS_BASE) return 0;
   uint32_t * page = lookup_page(thread_current()->pagedir, uddr, false);
@@ -271,7 +272,7 @@ static int user_readable(void * uddr)
   return 1;
 }
 
-static int user_writable(void * uddr)
+int user_writable(void * uddr)
 {
   if(uddr >= PHYS_BASE) return 0;
   uint32_t * page = lookup_page(thread_current()->pagedir, uddr, false);
