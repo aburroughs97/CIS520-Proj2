@@ -244,6 +244,24 @@ thread_unblock (struct thread *t)
   intr_set_level (old_level);
 }
 
+struct thread 
+*get_thread (tid_t id)
+{
+  struct list_elem *e;
+  struct thread *thread = NULL;
+    for (e = list_begin (&all_list); e != list_end (&all_list);
+       e = list_next (e))
+    {
+      struct thread *t = list_entry (e, struct thread, allelem);
+      if (t->tid = id)
+      {
+        thread = t;
+        break;
+      }
+    }
+  return thread;
+}
+
 /* Returns the name of the running thread. */
 const char *
 thread_name (void) 

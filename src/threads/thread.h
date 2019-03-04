@@ -100,6 +100,7 @@ struct thread
 	struct thread * parent;
 	struct list children;
 	struct list_elem parentelem;
+  struct list open_files;
 #endif
 
     /* Owned by thread.c. */
@@ -123,6 +124,8 @@ tid_t thread_create (const char *name, int priority, thread_func *, void *);
 void thread_block (void);
 void thread_unblock (struct thread *);
 
+struct thread *get_thread (tid_t);
+
 struct thread *thread_current (void);
 tid_t thread_tid (void);
 const char *thread_name (void);
@@ -141,5 +144,12 @@ int thread_get_nice (void);
 void thread_set_nice (int);
 int thread_get_recent_cpu (void);
 int thread_get_load_avg (void);
+
+struct open_file_struct
+{
+  int fd;
+  struct file *file;
+  struct list_elem elem;
+}
 
 #endif /* threads/thread.h */
