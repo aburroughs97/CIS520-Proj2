@@ -264,19 +264,27 @@ invalidate_pagedir (uint32_t *pd)
     } 
 }
 
-int user_readable(void * uddr)
+int user_readable(void * uddr, uint32_t size)
 {
-  if(uddr>=PHYS_BASE) return 0;
-  uint32_t * page = lookup_page(thread_current()->pagedir, uddr, false);
-  if(page==NULL) return 0;
+	uint32_t * u;
+	for (u = pg_no(uddr); u < pg_no(uddr + size); u++)
+	{
+		if (u >= PHYS_BASE) return 0;
+		uint32_t * page = lookup_page(thread_current()->pagedir, u<<PGBITS, false);
+		if (page == NULL) return 0;
+	}
   return 1;
 }
 
-int user_writable(void * uddr)
+int user_writable(void * uddr, uint32_t size)
 {
-  if(uddr >= PHYS_BASE) return 0;
-  uint32_t * page = lookup_page(thread_current()->pagedir, uddr, false);
-  if(page == NULL) return 0;
-  if(*page & PTE_W == 0) return 0;
+  uint32_t * u;
+  for (u = pg_no(uddr); u < pg_no(uddr + size); u++)
+  {
+	  if (u >= PHYS_BASE) return 0;
+	  uint32_t * page = lookup_page(thread_current()->pagedir, u<<PGBITS, false);
+	  if (page == NULL) return 0;
+	  if (*page & PTE_W == 0) return 0;
+  }
   return 1;
 }
