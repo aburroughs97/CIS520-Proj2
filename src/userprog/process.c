@@ -22,36 +22,109 @@
 static thread_func start_process NO_RETURN;
 static bool load (const char *cmdline, void (**eip) (void), void **esp);
 
+void break_filename(char * page, int * len, bool *needed)
+{
+	int index = -1;
+	char *s = page;
+	while (*s != '\0')
+	{
+		if (*s == ' ') {
+			index = s-page;
+			break;
+		}
+		s++;
+	}
+	*len = index;
+	page[*len] = '\0';
+
+	*needed = index != -1;
+}
+
+void repair_filename(char *page, int len, bool needed)
+{
+	if (!needed) return;
+	page[len] = ' ';
+}
+
 /* Starts a new thread running a user program loaded from
    FILENAME.  The new thread may be scheduled (and may even exit)
    before process_execute() returns.  Returns the new process's
    thread id, or TID_ERROR if the thread cannot be created. */
 tid_t
-process_execute (const char *file_name) 
+process_execute(const char *args)
 {
-  char *fn_copy;
-  tid_t tid;
-
+	char *fn_copy;
+	tid_t tid;
+	
+	char * file_name = args;
   /* Make a copy of FILE_NAME.
-     Otherwise there's a race between the caller and load(). */
-  fn_copy = palloc_get_page (0);
+  Otherwise there's a race between the caller and load(). */
+  fn_copy = palloc_get_page(0);
   if (fn_copy == NULL)
-    return TID_ERROR;
-  strlcpy (fn_copy, file_name, PGSIZE);
+	  return TID_ERROR;
+  strlcpy(fn_copy, file_name, PGSIZE);
 
   /* Create a new thread to execute FILE_NAME. */
   tid = thread_create (file_name, PRI_DEFAULT, start_process, fn_copy);
+  
   if (tid == TID_ERROR)
-    palloc_free_page (fn_copy); 
+    palloc_free_page (fn_copy);
   return tid;
+}
+
+void *splitargs(void *page)
+{
+	char *token, *save_ptr;
+	int numargs = 0;
+	int sizeofargs = strlen(page);
+	char*argv[64];
+	char*argv2[64];
+
+	for (token = strtok_r(page, " ", &save_ptr); token != NULL;
+		token = strtok_r(NULL, " ", &save_ptr))
+	{
+		argv[numargs] = token;
+		numargs++;
+	}
+
+	void * top = PHYS_BASE;
+	int i = 0;
+	for (i = numargs - 1; i >= 0; i--)
+	{
+		int len = strlen(argv[i]) + 1;
+		*(char*)(top - 1) = '\0';
+		top -= len;
+		argv2[i] = (char *)top;
+		strlcpy(top, argv[i], len);
+	}
+	//word align
+	top -= (uint32_t)top % 4;
+	//trailing NULL pointer
+	top -= 4;
+	*(char**)top = 0;
+	//argvs
+	for (i = numargs - 1; i >= 0; i--)
+	{
+		top -= 4;
+		*(char**)top = argv2[i];
+	}
+	//argv
+	top -= 4;
+	*(char ***)top = top + 4;
+	//argc
+	top -= 4;
+	*(int*)top = numargs;
+	top -= 4;
+	*(char**)top = 0;
+	return top;
 }
 
 /* A thread function that loads a user process and starts it
    running. */
 static void
-start_process (void *file_name_)
+start_process (void *args)
 {
-  char *file_name = file_name_;
+  char *file_name = args;
   struct intr_frame if_;
   bool success;
 
@@ -60,10 +133,17 @@ start_process (void *file_name_)
   if_.gs = if_.fs = if_.es = if_.ds = if_.ss = SEL_UDSEG;
   if_.cs = SEL_UCSEG;
   if_.eflags = FLAG_IF | FLAG_MBS;
+
+  int len;
+  bool needed;
+  break_filename(args, &len, &needed);
   success = load (file_name, &if_.eip, &if_.esp);
-  ASSERT(if_.esp > 0 && if_.eip > 0);
+  repair_filename(args, len, needed);
+
+  if_.esp = splitargs(args);
 
   /* If load failed, quit. */
+  //TODO Release this
   palloc_free_page (file_name);
   
   if (!success) 
@@ -442,9 +522,11 @@ setup_stack (void **esp)
   if (kpage != NULL) 
     {
       success = install_page (((uint8_t *) PHYS_BASE) - PGSIZE, kpage, true);
-      if (success)
-        *esp = PHYS_BASE - 12;
-      else
+	  if (success)
+	  {
+		  *esp = PHYS_BASE;//splitargs(kpage);
+	  }
+	  else
         palloc_free_page (kpage);
     }
   return success;
