@@ -1,10 +1,13 @@
 #include "userprog/syscall.h"
 #include <stdio.h>
+#include <string.h>
 #include "lib/kernel/stdio.h"
 #include <syscall-nr.h>
 #include "threads/interrupt.h"
 #include "threads/thread.h"
 #include "pagedir.h"
+#include "../src/devices/shutdown.h"
+#include "../src/filesys/filesys.h"
 
 static void syscall_handler (struct intr_frame *);
 
@@ -57,10 +60,10 @@ syscall_handler (struct intr_frame *f)
       wait((pid_t)param_1);
       break; 
     case SYS_CREATE:
-      create((char *)param_1, (uint32_t)param_2);
+      f->eax = create((char *)param_1, (uint32_t)param_2);
       break;
     case SYS_REMOVE:
-      remove((char *)param_1);
+      f->eax = remove((char *)param_1);
       break; 
     case SYS_OPEN:
       open((char *)param_1);
@@ -89,7 +92,7 @@ syscall_handler (struct intr_frame *f)
 void 
 halt (void) 
 {
-
+  shutdown_power_off();
 }
 
 void 
@@ -113,13 +116,31 @@ wait (pid_t pid)
 bool 
 create (const char *file, unsigned initial_size)
 {
-
+  int len;
+  if(user_readable_string(file))
+  {
+    len = strlen(file);
+    if(len > 0 && len <= 14)
+    {
+      return filesys_create(file, initial_size);
+    }
+  }
+  return false;
 }
 
 bool 
 remove (const char *file)
 {
-
+  int len;
+  if(user_readable_string(file))
+  {
+    len = strlen(file);
+    if(len > 0 && len <= 14)
+    {
+      return filesys_remove(file);
+    }
+  }
+  return false;
 }
 
 int 
@@ -144,7 +165,7 @@ read (int fd, void *buffer, unsigned length)
 int
 write (int fd, const void *buffer, unsigned size)
 {
-  if(user_readable(buffer)) 
+  if(user_readable(buffer, size)) 
   {
     if(fd == 1)
     {
