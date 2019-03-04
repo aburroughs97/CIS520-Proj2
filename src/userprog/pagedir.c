@@ -270,7 +270,7 @@ int user_readable(void * uddr, uint32_t size)
 	for (u = pg_no(uddr); u < pg_no(uddr + size); u++)
 	{
 		if (u >= PHYS_BASE) return 0;
-		uint32_t * page = lookup_page(thread_current()->pagedir, u<<PGBITS, false);
+		uint32_t * page = lookup_page(thread_current()->pagedir, (uint32_t*)((uint32_t)u << PGBITS), false);
 		if (page == NULL) return 0;
 	}
   return 1;
@@ -282,9 +282,19 @@ int user_writable(void * uddr, uint32_t size)
   for (u = pg_no(uddr); u < pg_no(uddr + size); u++)
   {
 	  if (u >= PHYS_BASE) return 0;
-	  uint32_t * page = lookup_page(thread_current()->pagedir, u<<PGBITS, false);
+	  uint32_t * page = lookup_page(thread_current()->pagedir, (uint32_t*)((uint32_t)u<<PGBITS), false);
 	  if (page == NULL) return 0;
 	  if (*page & PTE_W == 0) return 0;
   }
   return 1;
+}
+
+int user_readable_string(char *uddr)
+{
+	while (user_readable(uddr, 1))
+	{
+		if (*uddr == '\0') return 1;
+		else uddr++;
+	}
+	return 0;
 }

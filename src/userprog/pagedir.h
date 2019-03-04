@@ -16,6 +16,7 @@ void pagedir_set_accessed (uint32_t *pd, const void *upage, bool accessed);
 void pagedir_activate (uint32_t *pd);
 
 int user_readable(void * uddr, uint32_t size);
+int user_readable_string(char *uddr);
 int user_writable(void * uddr, uint32_t size);
 
 #endif /* userprog/pagedir.h */
