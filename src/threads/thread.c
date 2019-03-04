@@ -181,7 +181,8 @@ thread_create (const char *name, int priority,
 
   /* Initialize thread. */
   init_thread (t, name, priority);
-  tid = t->tid = allocate_tid ();
+  tid = t->pid = t->tid = allocate_tid ();
+  list_push_back(&thread_current()->children, &t->parentelem);
 
   /* Stack frame for kernel_thread(). */
   kf = alloc_frame (t, sizeof *kf);
@@ -463,6 +464,7 @@ init_thread (struct thread *t, const char *name, int priority)
   t->stack = (uint8_t *) t + PGSIZE;
   t->priority = priority;
   t->magic = THREAD_MAGIC;
+  list_init(&t->children);
 
   old_level = intr_disable ();
   list_push_back (&all_list, &t->allelem);
