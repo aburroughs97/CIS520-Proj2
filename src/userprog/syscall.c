@@ -5,12 +5,13 @@
 #include "threads/interrupt.h"
 #include "threads/thread.h"
 #include "pagedir.h"
+#include "threads/pte.h"
 
 static void syscall_handler (struct intr_frame *);
 
 //System call functions
 void halt (void) NO_RETURN;
-void exit (int status) NO_RETURN;
+void exit (int status,struct intr_frame *) NO_RETURN;
 pid_t exec (const char *file);
 int wait (pid_t);
 bool create (const char *file, unsigned initial_size);
@@ -48,13 +49,13 @@ syscall_handler (struct intr_frame *f)
       halt();
       break;
     case SYS_EXIT:
-      exit((int)param_1);
+      exit((int)param_1,f);
       break;
     case SYS_EXEC:
-      exec((char *)param_1);
+      f->eax = exec((char *)param_1);
       break;  
     case SYS_WAIT:
-      wait((pid_t)param_1);
+      f->eax = wait((pid_t)param_1);
       break; 
     case SYS_CREATE:
       create((char *)param_1, (uint32_t)param_2);
@@ -93,21 +94,43 @@ halt (void)
 }
 
 void 
-exit (int status)
+exit (int status,struct intr_frame *f)
 {
+	struct thread *t = thread_current();
+	t->status_code = status;
   thread_exit();
 }
 
 pid_t 
 exec (const char *file)
 {
-
+	if (user_readable_string(file))
+	{
+		int a = process_execute(file);
+		if (a == TID_ERROR) return -1;
+		return a;
+	}
+	else return -1;
 }
+
+/*
+int
+wait (pid_t pid)
+{
+int a = syscall1(SYS_WAIT, pid);
+if (thread_current()->status == THREAD_BLOCKED)
+{
+thread_block();
+return syscall1(SYS_WAIT, pid);
+}
+else return a;
+}
+*/
 
 int 
 wait (pid_t pid)
 {
-
+	return process_wait(pid);
 }
 
 bool 
@@ -144,7 +167,7 @@ read (int fd, void *buffer, unsigned length)
 int
 write (int fd, const void *buffer, unsigned size)
 {
-  if(user_readable(buffer)) 
+  if(user_readable_string(buffer)) 
   {
     if(fd == 1)
     {
@@ -177,5 +200,3 @@ close (int fd)
 {
 
 }
-
-

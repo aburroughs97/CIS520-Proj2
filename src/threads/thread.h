@@ -100,6 +100,8 @@ struct thread
 	struct thread * parent;
 	struct list children;
 	struct list_elem parentelem;
+	tid_t waiting_on;
+	int status_code;
 #endif
 
     /* Owned by thread.c. */
@@ -141,5 +143,7 @@ int thread_get_nice (void);
 void thread_set_nice (int);
 int thread_get_recent_cpu (void);
 int thread_get_load_avg (void);
+
+void cleanup_thread(struct thread * thread);
 
 #endif /* threads/thread.h */

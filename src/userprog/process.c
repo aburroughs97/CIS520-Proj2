@@ -140,10 +140,11 @@ start_process (void *args)
   success = load (file_name, &if_.eip, &if_.esp);
   repair_filename(args, len, needed);
 
-  if_.esp = splitargs(args);
+  if(success)
+	if_.esp = splitargs(args);
 
   /* If load failed, quit. */
-  //TODO Release this
+
   palloc_free_page (file_name);
   
   if (!success) 
@@ -161,21 +162,51 @@ start_process (void *args)
 }
 
 /* Waits for thread TID to die and returns its exit status.  If
-   it was terminated by the kernel (i.e. killed due to an
-   exception), returns -1.  If TID is invalid or if it was not a
-   child of the calling process, or if process_wait() has already
-   been successfully called for the given TID, returns -1
-   immediately, without waiting.
+it was terminated by the kernel (i.e. killed due to an
+exception), returns -1.  If TID is invalid or if it was not a
+child of the calling process, or if process_wait() has already
+been successfully called for the given TID, returns -1
+immediately, without waiting.
 
-   This function will be implemented in problem 2-2.  For now, it
-   does nothing. */
+This function will be implemented in problem 2-2.  For now, it
+does nothing. */
 int
-process_wait (tid_t child_tid UNUSED) 
+process_wait(tid_t child_tid)
 {
-  while(true){
-    //
-  }
-  return -1;
+	struct list_elem *e;
+	struct thread *child = NULL;
+	struct thread * t = thread_current();
+	for (e = list_begin(&t->children); e != list_end(&t->children); e = list_next(e))
+	{
+		struct thread *c = list_entry(e, struct thread, parentelem);
+		if (c->pid == child_tid)
+		{
+			child = c;
+			break;
+		}
+	}
+	if (child == NULL)
+	{
+		return -1;
+	}
+	else if (child->status == THREAD_DYING)
+	{
+		list_remove(e);
+		int code = child->status_code;
+		cleanup_thread(child);
+		return code;
+	}
+	else {
+		t->waiting_on = child_tid;
+		enum intr_level old_level = intr_disable();
+		thread_block();
+		intr_set_level(old_level);
+		list_remove(e);
+		t->waiting_on = 0;
+		int code = child->status_code;
+		return code;
+	}
+	return -1;
 }
 
 /* Free the current process's resources. */
@@ -190,6 +221,7 @@ process_exit (void)
   pd = cur->pagedir;
   if (pd != NULL) 
     {
+	  cleanup_thread(cur);
       /* Correct ordering here is crucial.  We must set
          cur->pagedir to NULL before switching page directories,
          so that a timer interrupt can't switch back to the

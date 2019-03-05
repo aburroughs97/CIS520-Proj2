@@ -182,8 +182,11 @@ thread_create (const char *name, int priority,
   /* Initialize thread. */
   init_thread (t, name, priority);
   tid = t->pid = t->tid = allocate_tid ();
-  t->parent = thread_current();
-  list_push_back(&thread_current()->children, &t->parentelem);
+  if (tid != 0)
+  {
+	  t->parent = thread_current();
+	  list_push_back(&thread_current()->children, &t->parentelem);
+  }
 
   /* Stack frame for kernel_thread(). */
   kf = alloc_frame (t, sizeof *kf);
@@ -466,6 +469,8 @@ init_thread (struct thread *t, const char *name, int priority)
   t->priority = priority;
   t->magic = THREAD_MAGIC;
   list_init(&t->children);
+  t->waiting_on = 0;
+  t->status_code = 0;
 
   old_level = intr_disable ();
   list_push_back (&all_list, &t->allelem);
@@ -541,7 +546,7 @@ thread_schedule_tail (struct thread *prev)
   if (prev != NULL && prev->status == THREAD_DYING && prev != initial_thread) 
     {
       ASSERT (prev != cur);
-      palloc_free_page (prev);
+      //palloc_free_page (prev);
     }
 }
 
@@ -581,7 +586,31 @@ allocate_tid (void)
 
   return tid;
 }
-
+
+void cleanup_thread(struct thread * t)
+{
+	struct list_elem *e;
+	for (e = list_begin(&t->children); e != list_end(&t->children); e = list_next(e))
+	{
+		struct thread * child = list_entry(e, struct thread, parentelem);
+		child->parent = NULL;
+		if (child->status == THREAD_DYING)
+		{
+			cleanup_thread(child);
+		}
+	}
+	if (t->parent == NULL)
+	{
+		palloc_free_page(t);
+	}
+	else {
+		if (t->parent->waiting_on == t->pid&&t->parent->status==THREAD_BLOCKED)
+		{
+			thread_unblock(t->parent);
+		}
+	}
+}
+
 /* Offset of `stack' member within `struct thread'.
    Used by switch.S, which can't figure it out on its own. */
 uint32_t thread_stack_ofs = offsetof (struct thread, stack);
