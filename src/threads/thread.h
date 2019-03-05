@@ -94,8 +94,8 @@ struct thread
     struct list_elem elem;              /* List element. */
 
 #ifdef USERPROG
-    /* Owned by userprog/process.c. */
-    uint32_t *pagedir;                  /* Page directory. */
+  /* Owned by userprog/process.c. */
+  uint32_t *pagedir;                  /* Page directory. */
 	tid_t pid;
 	struct thread * parent;
 	struct list children;
@@ -145,11 +145,13 @@ void thread_set_nice (int);
 int thread_get_recent_cpu (void);
 int thread_get_load_avg (void);
 
+struct file *get_open_file(int fd);
+
 struct open_file_struct
 {
   int fd;
   struct file *file;
   struct list_elem elem;
-}
+};
 
 #endif /* threads/thread.h */

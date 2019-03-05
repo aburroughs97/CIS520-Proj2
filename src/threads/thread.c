@@ -599,6 +599,21 @@ allocate_tid (void)
 
   return tid;
 }
+
+struct file *
+get_open_file(int fd)
+{
+  struct list *l = thread_current()->open_files;
+  for(struct list_elem * e = list_begin(l); e != list_end(l); e = list_next(e))
+  {
+    struct open_file_struct *elem = list_entry (e, struct open_file_struct, elem);
+    if(elem->fd == fd)
+    {
+      return elem->file;
+    }
+  }
+  return NULL;
+}
 
 /* Offset of `stack' member within `struct thread'.
    Used by switch.S, which can't figure it out on its own. */
