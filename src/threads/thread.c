@@ -603,8 +603,8 @@ allocate_tid (void)
 struct file *
 get_open_file(int fd)
 {
-  struct list *l = thread_current()->open_files;
-  for(struct list_elem * e = list_begin(l); e != list_end(l); e = list_next(e))
+  struct list l = thread_current()->open_files;
+  for(struct list_elem * e = list_begin(&l); e != list_end(&l); e = list_next(e))
   {
     struct open_file_struct *elem = list_entry (e, struct open_file_struct, elem);
     if(elem->fd == fd)

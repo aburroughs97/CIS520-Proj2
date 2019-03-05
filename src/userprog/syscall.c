@@ -8,6 +8,7 @@
 #include "pagedir.h"
 #include "../src/devices/shutdown.h"
 #include "../src/filesys/filesys.h"
+#include "../src/filesys/file.h"
 
 static void syscall_handler (struct intr_frame *);
 
@@ -69,7 +70,7 @@ syscall_handler (struct intr_frame *f)
       open((char *)param_1);
       break; 
     case SYS_FILESIZE:
-      filesize((int)param_1);
+      f->eax = filesize((int)param_1);
       break;
     case SYS_READ:
       read((int)param_1, param_2, (uint32_t)param_3);
@@ -81,7 +82,7 @@ syscall_handler (struct intr_frame *f)
       seek((int)param_1, (uint32_t)param_2);
       break; 
     case SYS_TELL:
-      tell((int)param_1);
+      f->eax = tell((int)param_1);
       break; 
     case SYS_CLOSE:
       close((int)param_1);
@@ -152,7 +153,8 @@ open (const char *file)
 int 
 filesize (int fd)
 {
-
+  struct file *f = get_open_file(fd);
+  return file_length(f);
 }
 
 int 
@@ -184,13 +186,15 @@ write (int fd, const void *buffer, unsigned size)
 void 
 seek (int fd, unsigned position)
 {
-
+  struct file *f = get_open_file(fd);
+  file_seek(f, position);
 }
 
 unsigned 
 tell (int fd)
 {
-
+  struct file *f = get_open_file(fd);
+  return file_tell(f);
 }
 
 void 
