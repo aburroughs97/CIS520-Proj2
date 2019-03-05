@@ -94,14 +94,18 @@ struct thread
     struct list_elem elem;              /* List element. */
 
 #ifdef USERPROG
-    /* Owned by userprog/process.c. */
-    uint32_t *pagedir;                  /* Page directory. */
+  /* Owned by userprog/process.c. */
+  uint32_t *pagedir;                  /* Page directory. */
 	tid_t pid;
 	struct thread * parent;
 	struct list children;
 	struct list_elem parentelem;
+<<<<<<< HEAD
 	tid_t waiting_on;
 	int status_code;
+=======
+  struct list open_files;
+>>>>>>> e992a1760804cdc6dda05f93e065d1ce9e22cc2c
 #endif
 
     /* Owned by thread.c. */
@@ -125,6 +129,8 @@ tid_t thread_create (const char *name, int priority, thread_func *, void *);
 void thread_block (void);
 void thread_unblock (struct thread *);
 
+struct thread *get_thread (tid_t);
+
 struct thread *thread_current (void);
 tid_t thread_tid (void);
 const char *thread_name (void);
@@ -145,5 +151,13 @@ int thread_get_recent_cpu (void);
 int thread_get_load_avg (void);
 
 void cleanup_thread(struct thread * thread);
+struct file *get_open_file(int fd);
+
+struct open_file_struct
+{
+  int fd;
+  struct file *file;
+  struct list_elem elem;
+};
 
 #endif /* threads/thread.h */

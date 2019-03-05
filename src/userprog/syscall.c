@@ -1,11 +1,15 @@
 #include "userprog/syscall.h"
 #include <stdio.h>
+#include <string.h>
 #include "lib/kernel/stdio.h"
 #include <syscall-nr.h>
 #include "threads/interrupt.h"
 #include "threads/thread.h"
 #include "pagedir.h"
 #include "threads/pte.h"
+#include "../src/devices/shutdown.h"
+#include "../src/filesys/filesys.h"
+#include "../src/filesys/file.h"
 
 static void syscall_handler (struct intr_frame *);
 
@@ -58,16 +62,16 @@ syscall_handler (struct intr_frame *f)
       f->eax = wait((pid_t)param_1);
       break; 
     case SYS_CREATE:
-      create((char *)param_1, (uint32_t)param_2);
+      f->eax = create((char *)param_1, (uint32_t)param_2);
       break;
     case SYS_REMOVE:
-      remove((char *)param_1);
+      f->eax = remove((char *)param_1);
       break; 
     case SYS_OPEN:
       open((char *)param_1);
       break; 
     case SYS_FILESIZE:
-      filesize((int)param_1);
+      f->eax = filesize((int)param_1);
       break;
     case SYS_READ:
       read((int)param_1, param_2, (uint32_t)param_3);
@@ -79,7 +83,7 @@ syscall_handler (struct intr_frame *f)
       seek((int)param_1, (uint32_t)param_2);
       break; 
     case SYS_TELL:
-      tell((int)param_1);
+      f->eax = tell((int)param_1);
       break; 
     case SYS_CLOSE:
       close((int)param_1);
@@ -90,7 +94,7 @@ syscall_handler (struct intr_frame *f)
 void 
 halt (void) 
 {
-
+  shutdown_power_off();
 }
 
 void 
@@ -113,20 +117,6 @@ exec (const char *file)
 	else return -1;
 }
 
-/*
-int
-wait (pid_t pid)
-{
-int a = syscall1(SYS_WAIT, pid);
-if (thread_current()->status == THREAD_BLOCKED)
-{
-thread_block();
-return syscall1(SYS_WAIT, pid);
-}
-else return a;
-}
-*/
-
 int 
 wait (pid_t pid)
 {
@@ -136,13 +126,31 @@ wait (pid_t pid)
 bool 
 create (const char *file, unsigned initial_size)
 {
-
+  int len;
+  if(user_readable_string(file))
+  {
+    len = strlen(file);
+    if(len > 0 && len <= 14)
+    {
+      return filesys_create(file, initial_size);
+    }
+  }
+  return false;
 }
 
 bool 
 remove (const char *file)
 {
-
+  int len;
+  if(user_readable_string(file))
+  {
+    len = strlen(file);
+    if(len > 0 && len <= 14)
+    {
+      return filesys_remove(file);
+    }
+  }
+  return false;
 }
 
 int 
@@ -154,7 +162,8 @@ open (const char *file)
 int 
 filesize (int fd)
 {
-
+  struct file *f = get_open_file(fd);
+  return file_length(f);
 }
 
 int 
@@ -167,7 +176,7 @@ read (int fd, void *buffer, unsigned length)
 int
 write (int fd, const void *buffer, unsigned size)
 {
-  if(user_readable_string(buffer)) 
+  if(user_readable(buffer, size)) 
   {
     if(fd == 1)
     {
@@ -186,13 +195,15 @@ write (int fd, const void *buffer, unsigned size)
 void 
 seek (int fd, unsigned position)
 {
-
+  struct file *f = get_open_file(fd);
+  file_seek(f, position);
 }
 
 unsigned 
 tell (int fd)
 {
-
+  struct file *f = get_open_file(fd);
+  return file_tell(f);
 }
 
 void 

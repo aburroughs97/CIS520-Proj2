@@ -247,6 +247,24 @@ thread_unblock (struct thread *t)
   intr_set_level (old_level);
 }
 
+struct thread 
+*get_thread (tid_t id)
+{
+  struct list_elem *e;
+  struct thread *thread = NULL;
+    for (e = list_begin (&all_list); e != list_end (&all_list);
+       e = list_next (e))
+    {
+      struct thread *t = list_entry (e, struct thread, allelem);
+      if (t->tid = id)
+      {
+        thread = t;
+        break;
+      }
+    }
+  return thread;
+}
+
 /* Returns the name of the running thread. */
 const char *
 thread_name (void) 
@@ -611,6 +629,20 @@ void cleanup_thread(struct thread * t)
 	}
 }
 
+struct file *
+get_open_file(int fd)
+{
+  struct list l = thread_current()->open_files;
+  for(struct list_elem * e = list_begin(&l); e != list_end(&l); e = list_next(e))
+  {
+    struct open_file_struct *elem = list_entry (e, struct open_file_struct, elem);
+    if(elem->fd == fd)
+    {
+      return elem->file;
+    }
+  }
+  return NULL;
+}
 /* Offset of `stack' member within `struct thread'.
    Used by switch.S, which can't figure it out on its own. */
 uint32_t thread_stack_ofs = offsetof (struct thread, stack);
