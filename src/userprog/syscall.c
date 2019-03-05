@@ -15,7 +15,7 @@ static void syscall_handler (struct intr_frame *);
 
 //System call functions
 void halt (void) NO_RETURN;
-void exit (int status,struct intr_frame *) NO_RETURN;
+void exit (int status) NO_RETURN;
 pid_t exec (const char *file);
 int wait (pid_t);
 bool create (const char *file, unsigned initial_size);
@@ -53,7 +53,7 @@ syscall_handler (struct intr_frame *f)
       halt();
       break;
     case SYS_EXIT:
-      exit((int)param_1,f);
+      exit((int)param_1);
       break;
     case SYS_EXEC:
       f->eax = exec((char *)param_1);
@@ -98,10 +98,11 @@ halt (void)
 }
 
 void 
-exit (int status,struct intr_frame *f)
+exit (int status)
 {
 	struct thread *t = thread_current();
 	t->status_code = status;
+	printf("%s: exit(%i)\n", t->name, status);
   thread_exit();
 }
 
