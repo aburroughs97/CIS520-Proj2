@@ -100,12 +100,9 @@ struct thread
 	struct thread * parent;
 	struct list children;
 	struct list_elem parentelem;
-<<<<<<< HEAD
 	tid_t waiting_on;
 	int status_code;
-=======
   struct list open_files;
->>>>>>> e992a1760804cdc6dda05f93e065d1ce9e22cc2c
 #endif
 
     /* Owned by thread.c. */
