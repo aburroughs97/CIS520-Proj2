@@ -267,14 +267,14 @@ invalidate_pagedir (uint32_t *pd)
 int user_readable(void * uddr, uint32_t size)
 {
 	if (uddr == 0) return 0;
-	uint32_t * u;
+	uint32_t u;
 	for (u = pg_no(uddr); u <= pg_no(uddr + size); u++)
 	{
-		printf("Testing page %i\n", u);
 		void * u2 = (uint32_t*)((uint32_t)u << PGBITS);
 		if (u2 >= PHYS_BASE) return 0;
 		uint32_t * page = lookup_page(thread_current()->pagedir, u2, false);
 		if (page == NULL) return 0;
+		if ((*page&PTE_P) == 0) return 0;
 	}
   return 1;
 }
@@ -282,14 +282,14 @@ int user_readable(void * uddr, uint32_t size)
 int user_writable(void * uddr, uint32_t size)
 {
 	if (uddr == 0) return 0;
-  uint32_t * u;
+  uint32_t u;
   for (u = pg_no(uddr); u <= pg_no(uddr + size); u++)
   {
 	  void * u2 = (uint32_t*)((uint32_t)u << PGBITS);
 	  if (u2 >= PHYS_BASE) return 0;
 	  uint32_t * page = lookup_page(thread_current()->pagedir, u2, false);
 	  if (page == NULL) return 0;
-	  if (*page & PTE_W == 0) return 0;
+	  if ((*page & (PTE_W|PTE_P)) == 0) return 0;
   }
   return 1;
 }

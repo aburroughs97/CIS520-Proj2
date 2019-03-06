@@ -44,7 +44,6 @@ syscall_handler (struct intr_frame *f)
   
   if(!user_readable(f->esp, 4))
   {
-    printf("%i\n",f->esp);
     exit(-1);
     return;
   }
