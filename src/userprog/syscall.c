@@ -37,22 +37,24 @@ syscall_init (void)
 static void
 syscall_handler (struct intr_frame *f) 
 {
-  uint32_t *sys_call_num;
+  uint32_t sys_call_num;
   void **param_1;
   void **param_2;
   void **param_3;   
   
   if(!user_readable(f->esp, 4))
   {
+    printf("%i\n",f->esp);
     exit(-1);
     return;
   }
 
-  sys_call_num = (uint32_t*)f->esp;
+  sys_call_num = *(uint32_t*)f->esp;
 
   param_1 = (void **)(f->esp + 4);
   param_2 = (void **)(f->esp + 8);
   param_3 = (void **)(f->esp + 12);
+
   switch(sys_call_num)
   {
     case SYS_HALT:
