@@ -469,6 +469,19 @@ is_thread (struct thread *t)
   return t != NULL && t->magic == THREAD_MAGIC;
 }
 
+static void strlcpy_no_space(char * tname, const *name)
+{
+	char *t = tname;
+	char *n = name;
+	while (*n != '\0'&&*n != ' ')
+	{
+		*t = *n;
+		n++;
+		t++;
+	}
+	*t = '\0';
+}
+
 /* Does basic initialization of T as a blocked thread named
    NAME. */
 static void
@@ -482,7 +495,10 @@ init_thread (struct thread *t, const char *name, int priority)
 
   memset (t, 0, sizeof *t);
   t->status = THREAD_BLOCKED;
-  strlcpy (t->name, name, sizeof t->name);
+  //strlcpy that ignores spaces
+  //strlcpy (t->name, name, sizeof t->name);
+  strlcpy_no_space(t->name, name);
+
   t->stack = (uint8_t *) t + PGSIZE;
   t->priority = priority;
   t->magic = THREAD_MAGIC;

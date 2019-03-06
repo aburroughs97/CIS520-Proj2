@@ -51,12 +51,11 @@ void repair_filename(char *page, int len, bool needed)
    before process_execute() returns.  Returns the new process's
    thread id, or TID_ERROR if the thread cannot be created. */
 tid_t
-process_execute(const char *args)
+process_execute(const char *file_name)
 {
 	char *fn_copy;
 	tid_t tid;
 	
-	char * file_name = args;
   /* Make a copy of FILE_NAME.
   Otherwise there's a race between the caller and load(). */
   fn_copy = palloc_get_page(0);
