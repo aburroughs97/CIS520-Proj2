@@ -8,6 +8,7 @@
 #include "pagedir.h"
 #include "threads/pte.h"
 #include "../src/devices/shutdown.h"
+#include "../src/devices/input.h"
 #include "../src/filesys/filesys.h"
 #include "../src/filesys/file.h"
 
@@ -22,8 +23,8 @@ bool create (const char *file, unsigned initial_size);
 bool remove (const char *file);
 int open (const char *file);
 int filesize (int fd);
-int read (int fd, void *buffer, unsigned length);
-int write (int fd, const void *buffer, unsigned length);
+int read (int fd, void *buffer, unsigned size);
+int write (int fd, const void *buffer, unsigned size);
 void seek (int fd, unsigned position);
 unsigned tell (int fd);
 void close (int fd);
@@ -206,7 +207,8 @@ create (const char *file, unsigned initial_size)
       return filesys_create(file, initial_size);
     }
   }
-  else {
+  else 
+  {
     exit(-1);
   }
   return false;
@@ -241,27 +243,57 @@ filesize (int fd)
 }
 
 int 
-read (int fd, void *buffer, unsigned length)
+read (int fd, void *buffer, unsigned size)
 {
-
+  //TODO Change 128 to not a constant
+  if(user_writable(buffer, size) && fd >= 0 && fd <= 128)
+  {
+    if(fd == 0)
+    {
+      return input_getc();
+    }
+    //We could exit(-1) here as well
+    else if(fd == 1)
+    {
+      return -1;
+    }
+    else
+    {
+       struct file *f = get_open_file(fd);
+       return file_read(f, buffer, size);
+    }
+  }
+  else
+  {
+    exit(-1);
+    return 0;
+  }
+  
 
 }
 
 int
 write (int fd, const void *buffer, unsigned size)
 {
-  if(user_readable(buffer, size)) 
+  if(user_readable(buffer, size) && fd >= 0 && fd <= 128) 
   {
     if(fd == 1)
     {
       putbuf(buffer, size);
       return size;
     }
-    //Other stuff
+    else if(fd == 0)
+    {
+      return -1;
+    }
+    else{
+      struct file *f = get_open_file(fd);
+      return file_write(f, buffer, size);
+    }
   }
   else
   {
-    thread_exit();
+    exit(-1);
     return 0;
   }
 }

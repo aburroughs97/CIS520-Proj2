@@ -256,7 +256,7 @@ struct thread
        e = list_next (e))
     {
       struct thread *t = list_entry (e, struct thread, allelem);
-      if (t->tid = id)
+      if (t->tid == id)
       {
         thread = t;
         break;
