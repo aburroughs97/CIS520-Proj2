@@ -270,6 +270,7 @@ int user_readable(void * uddr, uint32_t size)
 	uint32_t * u;
 	for (u = pg_no(uddr); u <= pg_no(uddr + size); u++)
 	{
+		printf("Testing page %i\n", u);
 		void * u2 = (uint32_t*)((uint32_t)u << PGBITS);
 		if (u2 >= PHYS_BASE) return 0;
 		uint32_t * page = lookup_page(thread_current()->pagedir, u2, false);
