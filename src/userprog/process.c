@@ -66,6 +66,7 @@ process_execute(const char *file_name)
   /* Create a new thread to execute FILE_NAME. */
   tid = thread_create (file_name, PRI_DEFAULT, start_process, fn_copy);
   struct thread *t = get_thread(tid);
+  t->cur_fd_num = 2;
   list_init(&t->open_files);
 
   if (tid == TID_ERROR)

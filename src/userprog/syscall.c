@@ -245,7 +245,30 @@ remove (const char *file)
 int 
 open (const char *file)
 {
-
+   if(user_readable_string(file))
+  {
+    if(strcmp(file, "") == 0)
+    {
+      return -1;
+    }
+    struct file *open = filesys_open(file);
+    if(open != NULL)
+    {
+      struct open_file_struct *ofs;
+      int fd = thread_current()->cur_fd_num++;
+      ofs->fd = fd;
+      ofs->file = open;
+      list_push_back(&thread_current()->open_files, &thread_current()->open_file_elem);
+      return fd;
+    }else
+    {
+      return -1;
+    }
+  }else
+  {
+    exit(-1);
+  }
+  return -1;
 }
 
 int 
@@ -328,5 +351,21 @@ tell (int fd)
 void 
 close (int fd)
 {
-
+  if(fd != 0 && fd != 1)
+  {
+    struct list l = thread_current()->open_files;
+    for(struct list_elem * e = list_begin(&l); e != list_end(&l); e = list_next(e))
+    {
+      struct open_file_struct *elem = list_entry (e, struct open_file_struct, elem);
+      if (elem->fd == fd)
+      {
+        printf("HERE %d : %d/n", elem->fd, fd);
+        list_remove(e);
+        break;
+      }
+    }
+  }else
+  {
+    exit(-1);
+  }
 }

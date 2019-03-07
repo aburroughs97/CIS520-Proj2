@@ -97,12 +97,14 @@ struct thread
   /* Owned by userprog/process.c. */
   uint32_t *pagedir;                  /* Page directory. */
 	tid_t pid;
+  int cur_fd_num;
 	struct thread * parent;
 	struct list children;
 	struct list_elem parentelem;
 	tid_t waiting_on;
 	int status_code;
   struct list open_files;
+  struct list_elem open_file_elem;
   bool ready_to_clear;
 #endif
 
