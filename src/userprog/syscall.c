@@ -199,7 +199,7 @@ exec (const char *file)
 		}
 		return a;
 	}
-	else return -1;
+	else exit(-1);
 }
 
 int 
