@@ -245,17 +245,16 @@ filesize (int fd)
 int 
 read (int fd, void *buffer, unsigned size)
 {
-  //TODO Change 128 to not a constant
-  if(user_writable(buffer, size) && fd >= 0 && fd <= 128)
+  if(user_writable(buffer, size))
   {
-    if(fd == 0)
-    {
-      return input_getc();
-    }
-    //We could exit(-1) here as well
-    else if(fd == 1)
+    //TODO Change 2 to be the thread's fd counter
+    if(fd < 0 || fd > 2 || fd == 1)
     {
       return -1;
+    }
+    else if(fd == 0)
+    {
+      return input_getc();
     }
     else
     {
@@ -275,16 +274,17 @@ read (int fd, void *buffer, unsigned size)
 int
 write (int fd, const void *buffer, unsigned size)
 {
-  if(user_readable(buffer, size) && fd >= 0 && fd <= 128) 
+  if(user_readable(buffer, size)) 
   {
-    if(fd == 1)
+    //TODO Change 2 to be the thread's fd counter
+    if(fd <= 0 || fd > 2)
+    {
+      return -1;
+    }
+    else if(fd == 1)
     {
       putbuf(buffer, size);
       return size;
-    }
-    else if(fd == 0)
-    {
-      return -1;
     }
     else{
       struct file *f = get_open_file(fd);
