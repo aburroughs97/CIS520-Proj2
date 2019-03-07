@@ -182,11 +182,9 @@ thread_create (const char *name, int priority,
   /* Initialize thread. */
   init_thread (t, name, priority);
   tid = t->pid = t->tid = allocate_tid ();
-  if (tid != 0)
-  {
-	  t->parent = thread_current();
-	  list_push_back(&thread_current()->children, &t->parentelem);
-  }
+
+  t->parent = thread_current();
+  list_push_back(&thread_current()->children, &t->parentelem);
 
   /* Stack frame for kernel_thread(). */
   kf = alloc_frame (t, sizeof *kf);
@@ -256,7 +254,7 @@ struct thread
        e = list_next (e))
     {
       struct thread *t = list_entry (e, struct thread, allelem);
-      if (t->tid = id)
+      if (t->tid == id)
       {
         thread = t;
         break;
@@ -312,9 +310,9 @@ thread_exit (void)
   /* Remove thread from all threads list, set our status to dying,
      and schedule another process.  That process will destroy us
      when it calls thread_schedule_tail(). */
-  intr_disable ();
-  list_remove (&thread_current()->allelem);
-  thread_current ()->status = THREAD_DYING;
+  intr_disable();
+  list_remove(&thread_current()->allelem);
+  thread_current()->status = THREAD_DYING;
   schedule ();
   NOT_REACHED ();
 }
@@ -505,6 +503,7 @@ init_thread (struct thread *t, const char *name, int priority)
   list_init(&t->children);
   t->waiting_on = 0;
   t->status_code = 0;
+  t->ready_to_clear = false;
 
   old_level = intr_disable ();
   list_push_back (&all_list, &t->allelem);
@@ -580,7 +579,7 @@ thread_schedule_tail (struct thread *prev)
   if (prev != NULL && prev->status == THREAD_DYING && prev != initial_thread) 
     {
       ASSERT (prev != cur);
-      //palloc_free_page (prev);
+	  cleanup_thread(prev,false);
     }
 }
 
@@ -621,27 +620,30 @@ allocate_tid (void)
   return tid;
 }
 
-void cleanup_thread(struct thread * t)
+void cleanup_thread(struct thread * t, bool forceclear)
 {
 	struct list_elem *e;
-	for (e = list_begin(&t->children); e != list_end(&t->children); e = list_next(e))
+	for (e = list_begin(&t->children); e != list_end(&t->children);)
 	{
 		struct thread * child = list_entry(e, struct thread, parentelem);
 		child->parent = NULL;
+		e = list_next(e);
 		if (child->status == THREAD_DYING)
 		{
-			cleanup_thread(child);
+			list_remove(&child->parentelem);
+			cleanup_thread(child,false);
 		}
 	}
-	if (t->parent == NULL)
+	if (forceclear)
 	{
 		palloc_free_page(t);
-	}
-	else {
-		if (t->parent->waiting_on == t->pid&&t->parent->status==THREAD_BLOCKED)
+	} else
+	if (t->parent != NULL) {
+		if (t->parent->waiting_on == t->pid&&t->parent->status == THREAD_BLOCKED)
 		{
 			thread_unblock(t->parent);
 		}
+		else palloc_free_page(t);
 	}
 }
 

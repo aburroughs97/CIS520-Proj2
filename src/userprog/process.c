@@ -148,8 +148,15 @@ start_process (void *args)
 
   palloc_free_page (file_name);
   
-  if (!success) 
-    thread_exit ();
+  struct thread * t = thread_current();
+
+  if (!success)
+	  t->status_code = -1;
+  else
+	t->status_code = 0;
+
+  if (!success)
+	  thread_exit();
 
   /* Start the user process by simulating a return from an
      interrupt, implemented by intr_exit (in
@@ -194,7 +201,8 @@ process_wait(tid_t child_tid)
 	{
 		list_remove(e);
 		int code = child->status_code;
-		cleanup_thread(child);
+		child->parent = NULL;
+		cleanup_thread(child,true);
 		return code;
 	}
 	else {
@@ -204,7 +212,9 @@ process_wait(tid_t child_tid)
 		intr_set_level(old_level);
 		list_remove(e);
 		t->waiting_on = 0;
+		child->parent = NULL;
 		int code = child->status_code;
+		cleanup_thread(child,true);
 		return code;
 	}
 	return -1;
@@ -217,12 +227,14 @@ process_exit (void)
   struct thread *cur = thread_current ();
   uint32_t *pd;
 
+  //cleanup_thread(cur);
+
   /* Destroy the current process's page directory and switch back
      to the kernel-only page directory. */
   pd = cur->pagedir;
   if (pd != NULL) 
     {
-	  cleanup_thread(cur);
+	  cur->pagedir = NULL;
       /* Correct ordering here is crucial.  We must set
          cur->pagedir to NULL before switching page directories,
          so that a timer interrupt can't switch back to the
@@ -230,7 +242,6 @@ process_exit (void)
          directory before destroying the process's page
          directory, or our active page directory will be one
          that's been freed (and cleared). */
-      cur->pagedir = NULL;
       pagedir_activate (NULL);
       pagedir_destroy (pd);
     }

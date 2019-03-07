@@ -183,6 +183,19 @@ exec (const char *file)
 	{
 		int a = process_execute(file);
 		if (a == TID_ERROR) return -1;
+		struct thread * t = get_thread(a);
+		thread_current()->waiting_on = a;
+		enum intr_level old_level = intr_disable();
+		thread_block();
+		intr_set_level(old_level);
+		thread_current()->waiting_on = 0;
+		if (t->status_code == -1)
+		{
+			t->parent = NULL;
+			list_remove(&t->parentelem);
+			cleanup_thread(t,true);
+			return -1;
+		}
 		return a;
 	}
 	else return -1;

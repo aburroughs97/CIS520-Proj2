@@ -103,6 +103,7 @@ struct thread
 	tid_t waiting_on;
 	int status_code;
   struct list open_files;
+  bool ready_to_clear;
 #endif
 
     /* Owned by thread.c. */
@@ -147,7 +148,7 @@ void thread_set_nice (int);
 int thread_get_recent_cpu (void);
 int thread_get_load_avg (void);
 
-void cleanup_thread(struct thread * thread);
+void cleanup_thread(struct thread *, bool);
 struct file *get_open_file(int fd);
 
 struct open_file_struct
