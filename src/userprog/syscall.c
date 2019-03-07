@@ -106,7 +106,7 @@ syscall_handler (struct intr_frame *f)
         exit(-1);
         return;
       }    
-      open((char *)*param_1);
+      f->eax = open((char *)*param_1);
       break; 
     case SYS_FILESIZE:
       if(!user_readable(param_1, 4)) 
@@ -247,21 +247,27 @@ open (const char *file)
 {
    if(user_readable_string(file))
   {
+    //printf("filename: '%s'\n", file);
+    //printf("%d\n", strcmp(file, ""));
     if(strcmp(file, "") == 0)
     {
+      //printf("here\n");
       return -1;
     }
+    //printf("HERE\n");
     struct file *open = filesys_open(file);
     if(open != NULL)
     {
       struct open_file_struct *ofs;
       int fd = thread_current()->cur_fd_num++;
+      //printf("FD = %d\n");
       ofs->fd = fd;
       ofs->file = open;
       list_push_back(&thread_current()->open_files, &thread_current()->open_file_elem);
       return fd;
     }else
     {
+      //printf("HEREO");
       return -1;
     }
   }else
@@ -283,8 +289,7 @@ read (int fd, void *buffer, unsigned size)
 {
   if(user_writable(buffer, size))
   {
-    //TODO Change 2 to be the thread's fd counter
-    if(fd < 0 || fd > 2 || fd == 1)
+    if(fd < 0 || fd > thread_current()->cur_fd_num || fd == 1)
     {
       return -1;
     }
@@ -303,8 +308,6 @@ read (int fd, void *buffer, unsigned size)
     exit(-1);
     return 0;
   }
-  
-
 }
 
 int
@@ -312,8 +315,7 @@ write (int fd, const void *buffer, unsigned size)
 {
   if(user_readable(buffer, size)) 
   {
-    //TODO Change 2 to be the thread's fd counter
-    if(fd <= 0 || fd > 2)
+    if(fd <= 0 || fd > thread_current()->cur_fd_num)
     {
       return -1;
     }
@@ -351,6 +353,10 @@ tell (int fd)
 void 
 close (int fd)
 {
+  if(fd <= 0 || fd > thread_current()->cur_fd_num)
+  {
+    return -1;
+  }
   if(fd != 0 && fd != 1)
   {
     struct list l = thread_current()->open_files;
