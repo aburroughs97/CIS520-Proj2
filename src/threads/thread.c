@@ -643,7 +643,7 @@ void cleanup_thread(struct thread * t, bool forceclear)
 		{
 			thread_unblock(t->parent);
 		}
-		else palloc_free_page(t);
+		//else palloc_free_page(t);
 	}
 }
 
