@@ -41,7 +41,10 @@ syscall_handler (struct intr_frame *f)
   uint32_t sys_call_num;
   void **param_1;
   void **param_2;
-  void **param_3;   
+  void **param_3;  
+  bool param_1_valid;
+  bool param_2_valid;
+  bool param_3_valid; 
   
   if(!user_readable(f->esp, 4))
   {
@@ -54,6 +57,11 @@ syscall_handler (struct intr_frame *f)
   param_1 = (void **)(f->esp + 4);
   param_2 = (void **)(f->esp + 8);
   param_3 = (void **)(f->esp + 12);
+  
+  param_1_valid = user_readable(param_1, 4);
+  param_2_valid = user_readable(param_2, 4);
+  param_3_valid = user_readable(param_3, 4);
+
 
   switch(sys_call_num)
   {
@@ -61,105 +69,91 @@ syscall_handler (struct intr_frame *f)
       halt();
       break;
     case SYS_EXIT:
-      if(!user_readable(param_1, 4)) 
+      if(param_1_valid)
       {
-        exit(-1);
+        exit((int)*param_1);
         return;
       }
-      exit((int)*param_1);
       break;
     case SYS_EXEC:
-      if(!user_readable(param_1, 4)) 
+      if(param_1_valid) 
       {
-        exit(-1);
+        f->eax = exec((char *)*param_1);
         return;
       }
-      f->eax = exec((char *)*param_1);
       break;  
     case SYS_WAIT:
-      if(!user_readable(param_1, 4)) 
+      if(param_1_valid) 
       {
-        exit(-1);
-        return;
-      }    
-      f->eax = wait((pid_t)*param_1);
-      break; 
-    case SYS_CREATE:
-      if(!user_readable(param_1, 4) || !user_readable(param_2, 4)) 
-      {
-        exit(-1);
-        return;
-      }    
-      f->eax = create((char *)*param_1, (uint32_t)*param_2);
-      break;
-    case SYS_REMOVE:
-      if(!user_readable(param_1, 4)) 
-      {
-        exit(-1);
-        return;
-      }      
-      f->eax = remove((char *)*param_1);
-      break; 
-    case SYS_OPEN:
-      if(!user_readable(param_1, 4)) 
-      {
-        exit(-1);
-        return;
-      }    
-      f->eax = open((char *)*param_1);
-      break; 
-    case SYS_FILESIZE:
-      if(!user_readable(param_1, 4)) 
-      {
-        exit(-1);
-        return;
-      }    
-      f->eax = filesize((int)*param_1);
-      break;
-    case SYS_READ:
-      if(!user_readable(param_1, 4) || !user_readable(param_2, 4) || !user_readable(param_3, 4)) 
-      {
-        exit(-1);
-        return;
-      }    
-      f->eax = read((int)*param_1, *param_2, (uint32_t)*param_3);
-      break;    
-    case SYS_WRITE:
-      if(!user_readable(param_1, 4) || !user_readable(param_2, 4) || !user_readable(param_3, 4)) 
-      {
-        exit(-1);
-        return;
-      }       
-      f->eax = write((int)*param_1, *param_2, (uint32_t)*param_3);
-      break;
-    case SYS_SEEK:
-      if(!user_readable(param_1, 4) || !user_readable(param_2, 4)) 
-      {
-        exit(-1);
-        return;
-      }       
-      seek((int)*param_1, (uint32_t)*param_2);
-      break; 
-    case SYS_TELL:
-      if(!user_readable(param_1, 4)) 
-      {
-        exit(-1);
+        f->eax = wait((pid_t)*param_1);
         return;
       }   
-      f->eax = tell((int)*param_1);
+      break; 
+    case SYS_CREATE:
+      if(param_1_valid && param_2_valid) 
+      {
+        f->eax = create((char *)*param_1, (uint32_t)*param_2);
+        return;
+      }    
+      break;
+    case SYS_REMOVE:
+      if(param_1_valid) 
+      {
+        f->eax = remove((char *)*param_1);
+        return;
+      }      
+      break; 
+    case SYS_OPEN:
+      if(param_1_valid) 
+      {
+        f->eax = open((char *)*param_1);
+        return;
+      }    
+      break; 
+    case SYS_FILESIZE:
+      if(param_1_valid) 
+      {
+        f->eax = filesize((int)*param_1);
+        return;
+      }    
+      break;
+    case SYS_READ:
+      if(param_1_valid && param_2_valid && param_3_valid) 
+      {
+        f->eax = read((int)*param_1, *param_2, (uint32_t)*param_3);
+        return;
+      }    
+      break;    
+    case SYS_WRITE:
+      if(param_1_valid && param_2_valid && param_3_valid) 
+      {
+        f->eax = write((int)*param_1, *param_2, (uint32_t)*param_3);
+        return;
+      }       
+      break;
+    case SYS_SEEK:
+      if(param_1_valid && param_2_valid) 
+      {
+        seek((int)*param_1, (uint32_t)*param_2);
+        return;
+      }       
+      break; 
+    case SYS_TELL:
+      if(param_1_valid) 
+      {
+        f->eax = tell((int)*param_1);
+        return;
+      }   
       break; 
     case SYS_CLOSE:
-      if(!user_readable(param_1, 4)) 
+      if(param_1_valid) 
       {
-        exit(-1);
+        close((int)*param_1);
         return;
       }     
-      close((int)*param_1);
       break; 
-    default:
-      exit(-1);
-      break;
   }
+  exit(-1);
 }
 
 void 
