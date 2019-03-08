@@ -260,11 +260,11 @@ the process on a case-by-case basis.
 >> B10: What advantages or disadvantages can you see to your design
 >> for file descriptors?
 
-Advantages: Simplicity - It was easy to implement and understand
-         	Growth - It doesn't restrict the number of files a process can open
-    		Validation - Using a counter made it easy to validate whether or not a file descriptor was valid
-			Disadvantages:	Efficiency - Finding a file runs proportional to
-			the number of files a process has, so a program with a large number of open files would be slow to find that file
+Advantages: 	Simplicity - It was easy to implement and understand
+         		Growth - It doesn't restrict the number of files a process can open
+    			Validation - Using a counter made it easy to validate whether or not a file descriptor was valid
+Disadvantages:	Efficiency - Finding a file runs proportional to the number of files a process has, 
+								so a program with a large number of open files would be slow to find that file
 
 >> B11: The default tid_t to pid_t mapping is the identity mapping.
 >> If you changed it, what advantages are there to your approach?
@@ -283,23 +283,23 @@ the quarter.
 >> In your opinion, was this assignment, or any one of the three problems
 >> in it, too easy or too hard?  Did it take too long or too little time?
 
-	I felt like this assignment provided a good level of difficulty. It was doable, and flowed pretty well once
-	we got argument passing implemented. The difficulty, I think, was in the sheer volume. 
+I felt like this assignment provided a good level of difficulty. It was doable, and flowed pretty well once
+we got argument passing implemented. The difficulty, I think, was in the sheer volume. 
 
 >> Did you find that working on a particular part of the assignment gave
 >> you greater insight into some aspect of OS design?
 
-	It definitely helps. We wrote all of our own code, meaning that we acquired a significant amont of insight into
-	the way an OS handles system calls and executes user processes.
+It definitely helps. We wrote all of our own code, meaning that we acquired a significant amont of insight into
+the way an OS handles system calls and executes user processes.
 
 >> Is there some particular fact or hint we should give students in
 >> future quarters to help them solve the problems?  Conversely, did you
 >> find any of our guidance to be misleading?
 
-	The instructions in part 2. Suggested Order of Implementation, still leave your program page-faulting if you try to run 
-	any basic tests to verify your code. There is a line in the test code that checks the first argument to find the test-name,
-	and the instructions said that it would just print the name null, but it was actually producing a page-fault. It
-	was our biggest obstacle by far. 
+The instructions in part 2. Suggested Order of Implementation, still leave your program page-faulting if you try to run 
+any basic tests to verify your code. There is a line in the test code that checks the first argument to find the test-name,
+and the instructions said that it would just print the name null, but it was actually producing a page-fault. It
+was our biggest obstacle by far. 
 
 >> Do you have any suggestions for the TAs to more effectively assist
 >> students, either for future quarters or the remaining projects?
