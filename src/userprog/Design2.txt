@@ -1,0 +1,307 @@
+		           +--------------------------+
+				   |         CIS 520          |
+		           | PROJECT 2: USER PROGRAMS |
+		           |     DESIGN DOCUMENT      |
+		           +--------------------------+
+
+---- GROUP ----
+
+>> Fill in the names of your group members.
+
+Kyle Toom
+Caden Waters
+Alex Burroughs
+
+---- PRELIMINARIES ----
+
+>> If you have any preliminary comments on your submission, notes for the
+>> TAs, or extra credit, please give them here.
+
+>> Please cite any offline or online sources you consulted while
+>> preparing your submission, other than the Pintos documentation, course
+>> text, lecture notes, and course staff.
+
+			   ARGUMENT PASSING
+			   ================
+
+---- DATA STRUCTURES ----
+
+>> A1: Copy here the declaration of each new or changed `struct' or
+>> `struct' member, global or static variable, `typedef', or
+>> enumeration.  Identify the purpose of each in 25 words or less.
+
+None
+
+---- ALGORITHMS ----
+
+>> A2: Briefly describe how you implemented argument parsing.  How do
+>> you arrange for the elements of argv[] to be in the right order?
+>> How do you avoid overflowing the stack page?
+
+In order to not allocate extra resources, we "broke" and "repaired"
+the args/filename string around the load statement so that the load()
+would get the filename ended by a null pointer, with the other arguments
+hidden behind that, then turn that null character back into a space
+before we passed the arguments to a splitargs() function that put the
+arguments on the new thread's stack.
+
+Ordering the argvs was not much of a problem, as we iterated through
+the argvs in reverse order and put them on the stack that way, recording
+what positions we was inserting them at each time in a separate array.
+Considering that the page size was 4096 bytes and the arguments couldn't
+be longer than 128 characters combined, there was no risk of overflowing
+the new thread's stack. To keep the parent thread from overflowing its
+stack, we limited the amount of parameters to 64 in each of my arrays
+that kept track of argv placement, as the max amount of arguments you
+could have is 64 (each argument is a character with space, 2*64 = 128).
+This took up a kilobyte of space on the parent's stack temporarily, but
+did not end up as a problem.
+
+---- RATIONALE ----
+
+>> A3: Why does Pintos implement strtok_r() but not strtok()?
+
+For concurrency, Pintos uses strtok_r so that to strtok_r function
+can be called by several threads at once, each tokenizing their own
+strings. Otherwise, strtok_r would have to be entirely synchronized
+as it has to store its position in the tokenized string somewhere.
+
+>> A4: In Pintos, the kernel separates commands into an executable name
+>> and arguments.  In Unix-like systems, the shell does this
+>> separation.  Identify at least two advantages of the Unix approach.
+
+In the Unix approach, the delimited strings don't have to be stored in
+the new thread's stack and thus can be passed directly to child processes
+without copying them. Instead, they can be stored in the heap which is a
+lot easier to manipulate. This also means that the shell can perform extra
+operations on the arguments to further split them up and increase functuality,
+such as pipeline or redirect standard input/output.
+
+			     SYSTEM CALLS
+			     ============
+
+---- DATA STRUCTURES ----
+
+>> B1: Copy here the declaration of each new or changed `struct' or
+>> `struct' member, global or static variable, `typedef', or
+>> enumeration.  Identify the purpose of each in 25 words or less.
+	struct thread
+	  {
+		/* Owned by thread.c. */
+		tid_t tid;                          /* Thread identifier. */
+		enum thread_status status;          /* Thread state. */
+		char name[16];                      /* Name (for debugging purposes). */
+		uint8_t *stack;                     /* Saved stack pointer. */
+		int priority;                       /* Priority. */
+		struct list_elem allelem;           /* List element for all threads list. */
+
+		/* Shared between thread.c and synch.c. */
+		struct list_elem elem;              /* List element. */
+
+	#ifdef USERPROG                         /* Owned by userprog/process.c. */
+	  uint32_t *pagedir;                    /* Page directory. */
+	tid_t pid;
+	  int cur_fd_num;
+	struct thread * parent;                 /* Parent Thread. */
+	struct list children;                   /* List of child threads */
+	struct list_elem parentelem;            /* list element of the parent thread */
+	tid_t waiting_on;                       /* the thread id of the thread that this one is waiting for */
+	int status_code;
+	  struct list open_files;               /* list of files open, contains open_file_structs */
+	  struct list_elem open_file_elem;      /* element for the open_list */
+	  bool ready_to_clear;
+	  struct file * executable_file;
+	#endif                                  /* Owned by thread.c. */
+		unsigned magic;                     /* Detects stack overflow. */
+	  };// contains USERPROG section for when the thread is a userprogram 
+
+	struct open_file_struct
+	{
+	  int fd;
+	  struct file *file;
+	  struct list_elem elem;
+	}; // the structure that is held in the list thread->open_files, contains the file, fd num, and list elem
+
+	struct file *get_open_file(int fd); //loops through thread->open_files and returns the file from the open_file_struct on fd = ofs->fd
+
+>> B2: Describe how file descriptors are associated with open files.
+>> Are file descriptors unique within the entire OS or just within a
+>> single process?
+
+File descriptors are associated per-file per-process, meaning that each process has
+its own list of file descriptors that reference its own list of open files. Each process has
+a counter that, when a file is opened, will be the next file descriptor. This means
+that file descriptors are unique within a single process, and that a file can be
+referenced by multiple file descriptors on multiple processes. A file opened twice
+by a process with have a different file descriptor each time.
+
+---- ALGORITHMS ----
+
+>> B3: Describe your code for reading and writing user data from the
+>> kernel.
+
+First, we checked that it is not a null pointer, which is a common enough case
+that we can handle it separately. Next, we double checked that the data was below
+PHYS_BASE. Lastly, we checked to see if the indicated page was in the page
+directory for the process, making sure that it was valid, and in the case of
+writing, writeable.
+
+As opposed to doing this per byte, we did it per page for efficiency reasons
+by rounding down the first byte to its page and then going to the page that
+the last byte is in. This can speed the reading of large blocks of data up
+to PG_SIZE times as fast.
+
+This of course is incorrect in the case of strings, as we don't know the
+length of them before checking all the data, in which case we have to check
+byte-by-byte until we finally hit the null terminator.
+
+>> B4: Suppose a system call causes a full page (4,096 bytes) of data
+>> to be copied from user space into the kernel.  What is the least
+>> and the greatest possible number of inspections of the page table
+>> (e.g. calls to pagedir_get_page()) that might result?  What about
+>> for a system call that only copies 2 bytes of data?  Is there room
+>> for improvement in these numbers, and how much?
+
+In both the 4096 byte and the 2 byte cases, the minimum amount of checks
+to the page directory is 1 (the blocks of data are entirely in a page)
+and the max amount of checks is 2 (the data straddles the boundary between
+the page). There is really not any way to improve this as no matter how big
+you make the pages they could still fit inside the page or straddle the page lines.
+
+>> B5: Briefly describe your implementation of the "wait" system call
+>> and how it interacts with process termination.
+
+The wait system call can go three different ways:
+
+The requested pid's process is not in the list of children for this process, so we return -1
+
+The requested process is present but alive, so we must block and set the
+current process's waiting_on value to the requested pid, cleaning up the
+threads after the client returns and unblock's the parent process.
+
+The requested process is present and dead, in which case we have its status
+code already and we cleanup the dead thread's data.
+
+>> B6: Any access to user program memory at a user-specified address
+>> can fail due to a bad pointer value.  Such accesses must cause the
+>> process to be terminated.  System calls are fraught with such
+>> accesses, e.g. a "write" system call requires reading the system
+>> call number from the user stack, then each of the call's three
+>> arguments, then an arbitrary amount of user memory, and any of
+>> these can fail at any point.  This poses a design and
+>> error-handling problem: how do you best avoid obscuring the primary
+>> function of code in a morass of error-handling?  Furthermore, when
+>> an error is detected, how do you ensure that all temporarily
+>> allocated resources (locks, buffers, etc.) are freed?  In a few
+>> paragraphs, describe the strategy or strategies you adopted for
+>> managing these issues.  Give an example.
+
+To best avoid error handling without obscuring the function of the code,
+we pulled out the parameters passed and de-referenced them into local
+variables and checked the validity of each parameter and stored that in
+a bool. Then the code hits the case statements and just checks the validity
+from the bools on the appropriate parameters. We moved the exit(-1) to after
+the case statement as opposed to having it in each individual case statement.
+This implementation is very slightly more resource intensive but we think
+that is negligible because it makes the code much easier to read from a
+programming perspective.
+
+In order to ensure that all resources were cleaned up properly, we created
+a cleanup_thread function that was called whenever a thread died or got
+done waiting on a thread and retrieved its status code. This used the tree
+structure of the parent-child relationship. When a child dies, we can only
+deallocate its resources (including open files) if it doesn't have a parent,
+as that parent may at some point look at its status code. This is also where
+the parent is woken up if it happens to be waiting on the current thread. If
+a parent dies, we have to deallocate resources of any children that are dead
+already, as we will definitely not need to look at their status codes again.
+This strategy worked well as it ensured that we would have the status codes
+of any children in the eventuality that we call wait() on them, but ensured
+that their resources were cleared eventually as when the parent dies it takes
+all its dead children with it, meaning that the only threads kept in memory
+are the ones that are alive and the ones who have a chance of having wait()
+called on them.
+
+---- SYNCHRONIZATION ----
+
+>> B7: The "exec" system call returns -1 if loading the new executable
+>> fails, so it cannot return before the new executable has completed
+>> loading.  How does your code ensure this?  How is the load
+>> success/failure status passed back to the thread that calls "exec"?
+
+We reused the functuality of wait() by making it so that the child process
+will wake up its waiting parent not only on death, but on loading as well,
+storing whether or not the load worked in the status_code field of the child
+thread, returning -1 if the load failed but otherwise letting both threads
+continue executing as normal.
+
+>> B8: Consider parent process P with child process C.  How do you
+>> ensure proper synchronization and avoid race conditions when P
+>> calls wait(C) before C exits?  After C exits?  How do you ensure
+>> that all resources are freed in each case?  How about when P
+>> terminates without waiting, before C exits?  After C exits?  Are
+>> there any special cases?
+
+See parts B5 and B6. The tree structure described ensures that in all cases
+resources will eventually be cleared out.
+
+
+---- RATIONALE ----
+
+>> B9: Why did you choose to implement access to user memory from the
+>> kernel in the way that you did?
+
+This way, we didn't have to worry about handling page faults, redirecting them
+if memory access fails. It was a simple approach that induces slight
+(but as described in B3, not too bad in non-c-string cases) performance
+costs and let us choose whether to ignore the faulty memory access or kill
+the process on a case-by-case basis.
+
+>> B10: What advantages or disadvantages can you see to your design
+>> for file descriptors?
+
+Advantages: 	Simplicity - It was easy to implement and understand
+         	Growth - It doesn't restrict the number of files a process can open
+    		Validation - Using a counter made it easy to validate whether or not a file descriptor was valid
+			Disadvantages:	Efficiency - Finding a file runs proportional to
+			the number of files a process has, so a program with a large number of open files would be slow to find that file
+
+>> B11: The default tid_t to pid_t mapping is the identity mapping.
+>> If you changed it, what advantages are there to your approach?
+
+We didn't change the tid_t to pid_t mapping, as we felt that it would add unnecessary complexity.
+
+			   SURVEY QUESTIONS
+			   ================
+
+Answering these questions is optional, but it will help us improve the
+course in future quarters.  Feel free to tell us anything you
+want--these questions are just to spur your thoughts.  You may also
+choose to respond anonymously in the course evaluations at the end of
+the quarter.
+
+>> In your opinion, was this assignment, or any one of the three problems
+>> in it, too easy or too hard?  Did it take too long or too little time?
+
+	I felt like this assignment provided a good level of difficulty. It was doable, and flowed pretty well once
+	we got argument passing implemented. The difficulty, I think, was in the sheer volume. 
+
+>> Did you find that working on a particular part of the assignment gave
+>> you greater insight into some aspect of OS design?
+
+	It definitely helps. We wrote all of our own code, meaning that we acquired a significant amont of insight into
+	the way an OS handles system calls and executes user processes.
+
+>> Is there some particular fact or hint we should give students in
+>> future quarters to help them solve the problems?  Conversely, did you
+>> find any of our guidance to be misleading?
+
+	The instructions in part 2. Suggested Order of Implementation, still leave your program page-faulting if you try to run 
+	any basic tests to verify your code. There is a line in the test code that checks the first argument to find the test-name,
+	and the instructions said that it would just print the name null, but it was actually producing a page-fault. It
+	was our biggest obstacle by far. 
+
+>> Do you have any suggestions for the TAs to more effectively assist
+>> students, either for future quarters or the remaining projects?
+
+>> Any other comments?
