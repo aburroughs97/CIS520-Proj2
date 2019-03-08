@@ -122,7 +122,7 @@ syscall_handler (struct intr_frame *f)
         exit(-1);
         return;
       }    
-      read((int)*param_1, *param_2, (uint32_t)*param_3);
+      f->eax = read((int)*param_1, *param_2, (uint32_t)*param_3);
       break;    
     case SYS_WRITE:
       if(!user_readable(param_1, 4) || !user_readable(param_2, 4) || !user_readable(param_3, 4)) 
@@ -130,7 +130,7 @@ syscall_handler (struct intr_frame *f)
         exit(-1);
         return;
       }       
-      write((int)*param_1, *param_2, (uint32_t)*param_3);
+      f->eax = write((int)*param_1, *param_2, (uint32_t)*param_3);
       break;
     case SYS_SEEK:
       if(!user_readable(param_1, 4) || !user_readable(param_2, 4)) 
@@ -284,7 +284,7 @@ read (int fd, void *buffer, unsigned size)
 {
   if(user_writable(buffer, size))
   {
-    if(fd < 0 || fd > thread_current()->cur_fd_num || fd == 1)
+    if(fd < 0 || fd >= thread_current()->cur_fd_num || fd == 1)
     {
       return -1;
     }
@@ -310,7 +310,7 @@ write (int fd, const void *buffer, unsigned size)
 {
   if(user_readable(buffer, size)) 
   {
-    if(fd <= 0 || fd > thread_current()->cur_fd_num)
+    if(fd <= 0 || fd >= thread_current()->cur_fd_num)
     {
       return -1;
     }
@@ -348,7 +348,7 @@ tell (int fd)
 void 
 close (int fd)
 {
-  if(fd <= 0 || fd > thread_current()->cur_fd_num)
+  if(fd <= 0 || fd >= thread_current()->cur_fd_num)
   {
     return -1;
   }
