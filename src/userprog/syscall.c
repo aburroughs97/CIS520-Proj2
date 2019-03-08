@@ -361,6 +361,7 @@ close (int fd)
       if (elem->fd == fd)
       {
         list_remove(e);
+		file_close(elem->file);
         free(elem);
         break;
       }

@@ -11,8 +11,10 @@
 #include "threads/switch.h"
 #include "threads/synch.h"
 #include "threads/vaddr.h"
+#include <stdlib.h>
 #ifdef USERPROG
 #include "userprog/process.h"
+#include "filesys/file.h"
 #endif
 
 /* Random value for struct thread's `magic' member.
@@ -467,7 +469,7 @@ is_thread (struct thread *t)
   return t != NULL && t->magic == THREAD_MAGIC;
 }
 
-static void strlcpy_no_space(char * tname, const *name)
+static void strlcpy_no_space(char * tname, const char * name)
 {
 	char *t = tname;
 	char *n = name;
@@ -631,11 +633,20 @@ void cleanup_thread(struct thread * t, bool forceclear)
 		if (child->status == THREAD_DYING)
 		{
 			list_remove(&child->parentelem);
-			cleanup_thread(child,false);
+			cleanup_thread(child,true);
 		}
 	}
 	if (forceclear)
 	{
+		for (e = list_begin(&t->open_files); e != list_end(&t->open_files);)
+		{
+			struct list_elem *e2 = e;
+			e = list_next(e);
+			struct open_file_struct *ofs = list_entry(e2, struct open_file_struct, elem);
+			list_remove(e2);
+			file_close(ofs->file);
+			free(ofs);
+		}
 		palloc_free_page(t);
 	} else
 	if (t->parent != NULL) {
