@@ -88,31 +88,31 @@ such as pipeline or redirect standard input/output.
 	struct thread
 	  {
 		/* Owned by thread.c. */
-		tid_t tid;                          /* Thread identifier. */
-		enum thread_status status;          /* Thread state. */
-		char name[16];                      /* Name (for debugging purposes). */
-		uint8_t *stack;                     /* Saved stack pointer. */
-		int priority;                       /* Priority. */
-		struct list_elem allelem;           /* List element for all threads list. */
+		tid_t tid;                        		  /* Thread identifier. */
+		enum thread_status status;        		  /* Thread state. */
+		char name[16];                    		  /* Name (for debugging purposes). */
+		uint8_t *stack;                    		  /* Saved stack pointer. */
+		int priority;                      		  /* Priority. */
+		struct list_elem allelem;          		  /* List element for all threads list. */
 
 		/* Shared between thread.c and synch.c. */
-		struct list_elem elem;              /* List element. */
+		struct list_elem elem;             		  /* List element. */
 
-	#ifdef USERPROG                         /* Owned by userprog/process.c. */
-	  uint32_t *pagedir;                    /* Page directory. */
-	tid_t pid;
-	  int cur_fd_num;
-	struct thread * parent;                 /* Parent Thread. */
-	struct list children;                   /* List of child threads */
-	struct list_elem parentelem;            /* list element of the parent thread */
-	tid_t waiting_on;                       /* the thread id of the thread that this one is waiting for */
-	int status_code;
-	  struct list open_files;               /* list of files open, contains open_file_structs */
-	  struct list_elem open_file_elem;      /* element for the open_list */
-	  bool ready_to_clear;
-	  struct file * executable_file;
-	#endif                                  /* Owned by thread.c. */
-		unsigned magic;                     /* Detects stack overflow. */
+		#ifdef USERPROG                           /* Owned by userprog/process.c. */
+			uint32_t *pagedir;                    /* Page directory. */
+			tid_t pid;
+			int cur_fd_num;
+			struct thread * parent;               /* Parent Thread. */
+			struct list children;                 /* List of child threads */
+			struct list_elem parentelem;          /* list element of the parent thread */
+			tid_t waiting_on;                     /* the thread id of the thread that this one is waiting for */
+			int status_code;
+			struct list open_files;               /* list of files open, contains open_file_structs */
+			struct list_elem open_file_elem;      /* element for the open_list */
+			bool ready_to_clear;
+			struct file * executable_file;
+		#endif                                 	  /* Owned by thread.c. */
+		unsigned magic;                        	  /* Detects stack overflow. */
 	  };// contains USERPROG section for when the thread is a userprogram 
 
 	struct open_file_struct
@@ -260,7 +260,7 @@ the process on a case-by-case basis.
 >> B10: What advantages or disadvantages can you see to your design
 >> for file descriptors?
 
-Advantages: 	Simplicity - It was easy to implement and understand
+Advantages: Simplicity - It was easy to implement and understand
          	Growth - It doesn't restrict the number of files a process can open
     		Validation - Using a counter made it easy to validate whether or not a file descriptor was valid
 			Disadvantages:	Efficiency - Finding a file runs proportional to

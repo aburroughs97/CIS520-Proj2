@@ -93,21 +93,21 @@ struct thread
     /* Shared between thread.c and synch.c. */
     struct list_elem elem;              /* List element. */
 
-#ifdef USERPROG
-  /* Owned by userprog/process.c. */
-  uint32_t *pagedir;                  /* Page directory. */
-	tid_t pid;
-  int cur_fd_num;
-	struct thread * parent;
-	struct list children;
-	struct list_elem parentelem;
-	tid_t waiting_on;
-	int status_code;
-  struct list open_files;
-  struct list_elem open_file_elem;
-  bool ready_to_clear;
-  struct file * executable_file;
-#endif
+    #ifdef USERPROG
+      /* Owned by userprog/process.c. */
+      uint32_t *pagedir;                  /* Page directory. */
+      tid_t pid;
+      int cur_fd_num;
+      struct thread * parent;
+      struct list children;
+      struct list_elem parentelem;
+      tid_t waiting_on;
+      int status_code;
+      struct list open_files;
+      struct list_elem open_file_elem;
+      bool ready_to_clear;
+      struct file * executable_file;
+    #endif
 
     /* Owned by thread.c. */
     unsigned magic;                     /* Detects stack overflow. */
