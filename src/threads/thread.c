@@ -505,6 +505,7 @@ init_thread (struct thread *t, const char *name, int priority)
   list_init(&t->children);
   t->waiting_on = 0;
   t->status_code = 0;
+  t->executable_file = NULL;
   t->ready_to_clear = false;
 
   old_level = intr_disable ();

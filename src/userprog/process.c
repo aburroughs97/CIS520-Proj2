@@ -231,10 +231,9 @@ process_exit (void)
 
   /* Destroy the current process's page directory and switch back
      to the kernel-only page directory. */
-  if(user_readable(cur->executable_file, 4))
+  if(cur->executable_file!=NULL)
   {
 	  file_close(cur->executable_file);
-    file_allow_write(cur->executable_file);
   }
   pd = cur->pagedir;
   if (pd != NULL) 

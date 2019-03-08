@@ -3,7 +3,6 @@
 #include "filesys/inode.h"
 #include "threads/malloc.h"
 #include "threads/thread.h"
-#include <stdio.h>
 
 /* An open file. */
 struct file 
@@ -49,10 +48,7 @@ file_close (struct file *file)
 {
   if (file != NULL)
     {
-	  if (file != thread_current()->executable_file)
-	  {
-		  file_allow_write(file);
-	  }
+	  file_allow_write(file);
       inode_close (file->inode);
       free (file); 
     }
