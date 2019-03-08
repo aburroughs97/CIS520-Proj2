@@ -106,6 +106,7 @@ struct thread
   struct list open_files;
   struct list_elem open_file_elem;
   bool ready_to_clear;
+  struct file * executable_file;
 #endif
 
     /* Owned by thread.c. */

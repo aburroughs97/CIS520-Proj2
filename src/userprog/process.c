@@ -232,6 +232,7 @@ process_exit (void)
 
   /* Destroy the current process's page directory and switch back
      to the kernel-only page directory. */
+  file_allow_write(cur->executable_file);
   pd = cur->pagedir;
   if (pd != NULL) 
     {
@@ -355,6 +356,8 @@ load (const char *file_name, void (**eip) (void), void **esp)
 
   /* Open executable file. */
   file = filesys_open (file_name);
+  t->executable_file = file;
+  file_deny_write(file);
   if (file == NULL) 
     {
       printf ("load: %s: open failed\n", file_name);
