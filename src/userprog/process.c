@@ -78,7 +78,6 @@ void *splitargs(void *page)
 {
 	char *token, *save_ptr;
 	int numargs = 0;
-	int sizeofargs = strlen(page);
 	char*argv[64];
 	char*argv2[64];
 
@@ -234,6 +233,7 @@ process_exit (void)
      to the kernel-only page directory. */
   if(user_readable(cur->executable_file, 4))
   {
+	  file_close(cur->executable_file);
     file_allow_write(cur->executable_file);
   }
   pd = cur->pagedir;
@@ -364,6 +364,7 @@ load (const char *file_name, void (**eip) (void), void **esp)
       printf ("load: %s: open failed\n", file_name);
       goto done; 
     }
+
   t->executable_file = file;
   file_deny_write(file);
 
@@ -449,7 +450,7 @@ load (const char *file_name, void (**eip) (void), void **esp)
 
  done:
   /* We arrive here whether the load is successful or not. */
-  file_close (file);
+  //file_close (file);
   return success;
 }
 
