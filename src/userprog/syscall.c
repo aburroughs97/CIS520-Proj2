@@ -152,6 +152,19 @@ syscall_handler (struct intr_frame *f)
         return;
       }     
       break; 
+    case SYS_MMAP:
+      if(param_1_valid && param_2_valid)
+      {
+        f->eax = mmap((int)*param_1, *param_2);
+        return;
+      }
+      break;
+    case SYS_MUNMAP:
+      if(param_1_valid){
+        munmap((int)*param_1);
+        return;
+      }
+      break;
   }
   exit(-1);
 }
@@ -364,4 +377,28 @@ close (int fd)
   {
     exit(-1);
   }
+}
+
+mapid_t 
+mmap (int fd, void *addr)
+{
+  if(fd <= 1 || fd >= thread_current()->cur_fd_num)
+  {
+    return -1;
+  }
+  int size = filesize(fd);
+  if(size != 0 && addr != NULL && addr != 0)
+  {
+    //TODO: Check addr page alignment and valid page range
+
+  }
+  else 
+  {
+    return -1;
+  }
+}
+void 
+munmap (mapid_t mapping)
+{
+
 }
