@@ -1,14 +1,15 @@
 #include "vm/page.h"
 #include "threads/palloc.h"
+#include "userprog/pagedir.h"
 #include "threads/thread.h"
 #include "threads/pte.h"
 #include <stdbool.h>
 
-static void ***frame_table;
+static int ***frame_table;
 
 int fd_no(void * addr)
 {
-	return ((unsigned int)addr & 0xFFC00000) >> (32 - 10);
+	return ((unsigned int)addr >> (32 - 10))&0x3FF;
 }
 
 int ft_no(void *addr)
@@ -35,7 +36,7 @@ void vm_free_page(void * page)
 bool vm_install_page(void *page, void * addr)
 {
 	struct thread * t = thread_current();
-	frame_table[fd_no(page)][ft_no(page)] = &((void**)t->pagedir)[pd_no(addr)][pt_no(addr)];
+	frame_table[fd_no(page)][ft_no(page)] = lookup_page(t->pagedir,addr,false);
 	return true;
 }
 
