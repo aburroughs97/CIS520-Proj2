@@ -11,6 +11,7 @@
 #include "../src/devices/input.h"
 #include "../src/filesys/filesys.h"
 #include "../src/filesys/file.h"
+#include "vm/page.h"
 
 static void syscall_handler (struct intr_frame *);
 
@@ -33,6 +34,7 @@ void
 syscall_init (void) 
 {
   intr_register_int (0x30, 3, INTR_ON, syscall_handler, "syscall");
+  vm_init();
 }
 
 static void
