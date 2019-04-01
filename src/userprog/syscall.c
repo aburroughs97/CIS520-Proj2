@@ -11,7 +11,6 @@
 #include "../src/devices/input.h"
 #include "../src/filesys/filesys.h"
 #include "../src/filesys/file.h"
-#include "vm/page.h"
 
 static void syscall_handler (struct intr_frame *);
 
@@ -34,7 +33,6 @@ void
 syscall_init (void) 
 {
   intr_register_int (0x30, 3, INTR_ON, syscall_handler, "syscall");
-  vm_init();
 }
 
 static void
@@ -43,10 +41,7 @@ syscall_handler (struct intr_frame *f)
   uint32_t sys_call_num;
   void **param_1;
   void **param_2;
-  void **param_3;  
-  bool param_1_valid;
-  bool param_2_valid;
-  bool param_3_valid; 
+  void **param_3;   
   
   if(!user_readable(f->esp, 4))
   {
@@ -59,11 +54,6 @@ syscall_handler (struct intr_frame *f)
   param_1 = (void **)(f->esp + 4);
   param_2 = (void **)(f->esp + 8);
   param_3 = (void **)(f->esp + 12);
-  
-  param_1_valid = user_readable(param_1, 4);
-  param_2_valid = user_readable(param_2, 4);
-  param_3_valid = user_readable(param_3, 4);
-
 
   switch(sys_call_num)
   {
@@ -71,104 +61,105 @@ syscall_handler (struct intr_frame *f)
       halt();
       break;
     case SYS_EXIT:
-      if(param_1_valid)
+      if(!user_readable(param_1, 4)) 
       {
-        exit((int)*param_1);
+        exit(-1);
         return;
       }
+      exit((int)*param_1);
       break;
     case SYS_EXEC:
-      if(param_1_valid) 
+      if(!user_readable(param_1, 4)) 
       {
-        f->eax = exec((char *)*param_1);
+        exit(-1);
         return;
       }
+      f->eax = exec((char *)*param_1);
       break;  
     case SYS_WAIT:
-      if(param_1_valid) 
+      if(!user_readable(param_1, 4)) 
       {
-        f->eax = wait((pid_t)*param_1);
+        exit(-1);
         return;
-      }   
+      }    
+      f->eax = wait((pid_t)*param_1);
       break; 
     case SYS_CREATE:
-      if(param_1_valid && param_2_valid) 
+      if(!user_readable(param_1, 4) || !user_readable(param_2, 4)) 
       {
-        f->eax = create((char *)*param_1, (uint32_t)*param_2);
+        exit(-1);
         return;
       }    
+      f->eax = create((char *)*param_1, (uint32_t)*param_2);
       break;
     case SYS_REMOVE:
-      if(param_1_valid) 
+      if(!user_readable(param_1, 4)) 
       {
-        f->eax = remove((char *)*param_1);
+        exit(-1);
         return;
       }      
+      f->eax = remove((char *)*param_1);
       break; 
     case SYS_OPEN:
-      if(param_1_valid) 
+      if(!user_readable(param_1, 4)) 
       {
-        f->eax = open((char *)*param_1);
+        exit(-1);
         return;
       }    
+      f->eax = open((char *)*param_1);
       break; 
     case SYS_FILESIZE:
-      if(param_1_valid) 
+      if(!user_readable(param_1, 4)) 
       {
-        f->eax = filesize((int)*param_1);
+        exit(-1);
         return;
       }    
+      f->eax = filesize((int)*param_1);
       break;
     case SYS_READ:
-      if(param_1_valid && param_2_valid && param_3_valid) 
+      if(!user_readable(param_1, 4) || !user_readable(param_2, 4) || !user_readable(param_3, 4)) 
       {
-        f->eax = read((int)*param_1, *param_2, (uint32_t)*param_3);
+        exit(-1);
         return;
       }    
+      read((int)*param_1, *param_2, (uint32_t)*param_3);
       break;    
     case SYS_WRITE:
-      if(param_1_valid && param_2_valid && param_3_valid) 
+      if(!user_readable(param_1, 4) || !user_readable(param_2, 4) || !user_readable(param_3, 4)) 
       {
-        f->eax = write((int)*param_1, *param_2, (uint32_t)*param_3);
+        exit(-1);
         return;
       }       
+      write((int)*param_1, *param_2, (uint32_t)*param_3);
       break;
     case SYS_SEEK:
-      if(param_1_valid && param_2_valid) 
+      if(!user_readable(param_1, 4) || !user_readable(param_2, 4)) 
       {
-        seek((int)*param_1, (uint32_t)*param_2);
+        exit(-1);
         return;
       }       
+      seek((int)*param_1, (uint32_t)*param_2);
       break; 
     case SYS_TELL:
-      if(param_1_valid) 
+      if(!user_readable(param_1, 4)) 
       {
-        f->eax = tell((int)*param_1);
+        exit(-1);
         return;
       }   
+      f->eax = tell((int)*param_1);
       break; 
     case SYS_CLOSE:
-      if(param_1_valid) 
+      if(!user_readable(param_1, 4)) 
       {
-        close((int)*param_1);
+        exit(-1);
         return;
       }     
+      close((int)*param_1);
       break; 
-    case SYS_MMAP:
-      if(param_1_valid && param_2_valid)
-      {
-        f->eax = mmap((int)*param_1, *param_2);
-        return;
-      }
-      break;
-    case SYS_MUNMAP:
-      if(param_1_valid){
-        munmap((int)*param_1);
-        return;
-      }
+    default:
+      exit(-1);
       break;
   }
-  exit(-1);
 }
 
 void 
@@ -256,22 +247,27 @@ open (const char *file)
 {
    if(user_readable_string(file))
   {
+    //printf("filename: '%s'\n", file);
+    //printf("%d\n", strcmp(file, ""));
     if(strcmp(file, "") == 0)
     {
+      //printf("here\n");
       return -1;
     }
+    //printf("HERE\n");
     struct file *open = filesys_open(file);
     if(open != NULL)
     {
       struct open_file_struct *ofs;
       int fd = thread_current()->cur_fd_num++;
-      ofs = malloc(sizeof(struct open_file_struct));
+      printf("FD = %d\n", fd);
       ofs->fd = fd;
       ofs->file = open;
-      list_push_back(&thread_current()->open_files, &ofs->elem);
+      list_push_back(&thread_current()->open_files, &thread_current()->open_file_elem);
       return fd;
     }else
     {
+      //printf("HEREO");
       return -1;
     }
   }else
@@ -293,7 +289,7 @@ read (int fd, void *buffer, unsigned size)
 {
   if(user_writable(buffer, size))
   {
-    if(fd < 0 || fd >= thread_current()->cur_fd_num || fd == 1)
+    if(fd < 0 || fd > thread_current()->cur_fd_num || fd == 1)
     {
       return -1;
     }
@@ -319,7 +315,7 @@ write (int fd, const void *buffer, unsigned size)
 {
   if(user_readable(buffer, size)) 
   {
-    if(fd <= 0 || fd >= thread_current()->cur_fd_num)
+    if(fd <= 0 || fd > thread_current()->cur_fd_num)
     {
       return -1;
     }
@@ -357,21 +353,22 @@ tell (int fd)
 void 
 close (int fd)
 {
-  if(fd <= 0 || fd >= thread_current()->cur_fd_num)
+  if(fd <= 0 || fd > thread_current()->cur_fd_num)
   {
-    return -1;
+    return;
   }
   if(fd != 0 && fd != 1)
   {
-    struct list *l = &thread_current()->open_files;
-    for(struct list_elem * e = list_begin(l); e != list_end(l); e = list_next(e))
+    struct list l = thread_current()->open_files;
+    //printf("size %d")
+    for(struct list_elem * e = list_begin(&l); e != list_end(&l); e = list_next(e))
     {
       struct open_file_struct *elem = list_entry (e, struct open_file_struct, elem);
+      printf("HERE %d : %d/n", elem->fd, fd);
       if (elem->fd == fd)
       {
+        printf("HERE 222");
         list_remove(e);
-		file_close(elem->file);
-        free(elem);
         break;
       }
     }
@@ -379,28 +376,4 @@ close (int fd)
   {
     exit(-1);
   }
-}
-
-mapid_t 
-mmap (int fd, void *addr)
-{
-  if(fd <= 1 || fd >= thread_current()->cur_fd_num)
-  {
-    return -1;
-  }
-  int size = filesize(fd);
-  if(size != 0 && addr != NULL && addr != 0)
-  {
-    //TODO: Check addr page alignment and valid page range
-
-  }
-  else 
-  {
-    return -1;
-  }
-}
-void 
-munmap (mapid_t mapping)
-{
-
 }
