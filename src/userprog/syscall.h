@@ -2,6 +2,7 @@
 #define USERPROG_SYSCALL_H
 
 typedef int pid_t;
+typedef int mapid_t;
 void syscall_init (void);
 
 #endif /* userprog/syscall.h */
