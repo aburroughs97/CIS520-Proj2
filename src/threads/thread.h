@@ -4,6 +4,7 @@
 #include <debug.h>
 #include <list.h>
 #include <stdint.h>
+#include <hash.h>
 
 /* States in a thread's life cycle. */
 enum thread_status
@@ -107,6 +108,8 @@ struct thread
       struct list_elem open_file_elem;
       bool ready_to_clear;
       struct file * executable_file;
+
+	  struct hash spt;
     #endif
 
     /* Owned by thread.c. */
