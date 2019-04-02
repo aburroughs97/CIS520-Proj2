@@ -11,8 +11,10 @@ static unsigned int **frame_table[16];
 
 struct spte
 {
-	int diskaddr;
+	struct file * file;
+	unsigned int offset;
 	bool in_memory;
+	bool zero;
 	int *pte;
 	struct hash_elem elem;
 };
@@ -45,24 +47,38 @@ void * vm_get_page(bool zero)
 		//evict
 		return NULL;
 	}
-	//allocate and set up spte
 }
 
 void vm_free_page(void * page)
 {
-	palloc_free_page(page);
 	//free spte
+	struct thread * t = thread_current();
+	struct spte to_find;
+	to_find.pte = lookup_page(t->pagedir, page, false);
+	struct spte * spte = hash_entry(hash_find(&t->spt, &to_find.elem), struct spte, elem);
+	hash_delete(&t->spt, &spte->elem);
+	free(spte);
+	palloc_free_page(page);
 }
 
-bool vm_install_page(void *kpage, void * upage)
+bool vm_install_page(void * upage, struct file * file, unsigned int offset, bool zero)
 {
 	struct thread * t = thread_current();
-	void * page = lookup_page(t->pagedir, upage, false);
+	void * page = lookup_page(t->pagedir, upage, true);
 	if (page != NULL)
 	{
-		frame_table[fd_no(kpage)][ft_no(kpage)] = page;
+		//frame_table[fd_no(kpage)][ft_no(kpage)] = page;
+		//allocate and set up spte
+		struct spte * spte = malloc(sizeof(struct spte));
+		spte->pte = page;
+		spte->file = file;
+		spte->offset = offset;
+		spte->in_memory = false;
+		spte->zero = zero;
+		hash_insert(&t->spt, &spte->elem);
+		return true;
 	}
-	return true;
+	return false;
 }
 
 void vm_init()

@@ -567,6 +567,9 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
 static bool
 setup_stack (void **esp) 
 {
+	vm_install_page(((uint8_t *)PHYS_BASE) - PGSIZE, NULL, 0, true);
+	return true;
+	/*
   uint8_t *kpage;
   bool success = false;
 
@@ -582,6 +585,7 @@ setup_stack (void **esp)
         vm_free_page (kpage);
     }
   return success;
+  */
 }
 
 /* Adds a mapping from user virtual address UPAGE to kernel
@@ -602,6 +606,5 @@ install_page (void *upage, void *kpage, bool writable)
   /* Verify that there's not already a page at that virtual
      address, then map our page there. */
   return (pagedir_get_page (t->pagedir, upage) == NULL
-          && pagedir_set_page (t->pagedir, upage, kpage, writable)
-	      && vm_install_page(kpage,upage));
+          && pagedir_set_page (t->pagedir, upage, kpage, writable));
 }
