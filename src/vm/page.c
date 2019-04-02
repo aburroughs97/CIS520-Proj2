@@ -60,13 +60,8 @@ bool vm_install_page(void *kpage, void * upage)
 	void * page = lookup_page(t->pagedir, upage, false);
 	if (page != NULL)
 	{
-		int fd = fd_no(kpage);
-		if(fd>=16) *(int*)0 = 1;
-		int ft = ft_no(kpage);
-		if(ft>=1024) *(int*)0 = 1;
 		frame_table[fd_no(kpage)][ft_no(kpage)] = page;
 	}
-	else *(int*)0 = 1;
 	return true;
 }
 

@@ -15,6 +15,8 @@
 #ifdef USERPROG
 #include "userprog/process.h"
 #include "filesys/file.h"
+#include <hash.h>
+#include "vm/page.h"
 #endif
 
 /* Random value for struct thread's `magic' member.
@@ -507,6 +509,8 @@ init_thread (struct thread *t, const char *name, int priority)
   t->status_code = 0;
   t->executable_file = NULL;
   t->ready_to_clear = false;
+
+  hash_init(&t->spt, spte_hash_func, spte_hash_less, 0);
 
   old_level = intr_disable ();
   list_push_back (&all_list, &t->allelem);
