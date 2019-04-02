@@ -53,10 +53,13 @@ void vm_free_page(void * page)
 	//free spte
 }
 
-bool vm_install_page(void *page, void * addr)
+bool vm_install_page(void *kpage, void * upage)
 {
 	struct thread * t = thread_current();
-	frame_table[fd_no(page)][ft_no(page)] = lookup_page(t->pagedir,addr,false);
+	void * page = lookup_page(t->pagedir, upage, false);
+	if(page!=NULL)
+		frame_table[fd_no(kpage)][ft_no(kpage)] = page;
+	else *(int*)0 = 1;
 	return true;
 }
 
