@@ -9,16 +9,6 @@
 
 static unsigned int **frame_table[16];
 
-struct spte
-{
-	struct file * file;
-	unsigned int offset;
-	bool in_memory;
-	bool zero;
-	int *pte;
-	struct hash_elem elem;
-};
-
 unsigned int spte_hash_func(const struct hash_elem *e, void *aux UNUSED)
 {
 	return hash_entry(e, struct spte, elem)->pte;
@@ -47,6 +37,7 @@ void * vm_get_page(bool zero)
 		//evict
 		return NULL;
 	}
+	return page;
 }
 
 void vm_free_page(void * page)
@@ -61,7 +52,7 @@ void vm_free_page(void * page)
 	palloc_free_page(page);
 }
 
-bool vm_install_page(void * upage, struct file * file, unsigned int offset, bool zero)
+bool vm_install_page(void * upage, struct file * file, unsigned int offset, unsigned int length, bool zero)
 {
 	struct thread * t = thread_current();
 	void * page = lookup_page(t->pagedir, upage, true);
@@ -74,6 +65,7 @@ bool vm_install_page(void * upage, struct file * file, unsigned int offset, bool
 		spte->file = file;
 		spte->offset = offset;
 		spte->in_memory = false;
+		spte->length = length;
 		spte->zero = zero;
 		hash_insert(&t->spt, &spte->elem);
 		return true;

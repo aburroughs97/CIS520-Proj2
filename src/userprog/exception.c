@@ -5,6 +5,7 @@
 #include "threads/interrupt.h"
 #include "threads/thread.h"
 #include "../lib/user/syscall.h"
+#include "vm/page.h"
 
 /* Number of page faults processed. */
 static long long page_fault_cnt;
@@ -150,20 +151,37 @@ page_fault (struct intr_frame *f)
   write = (f->error_code & PF_W) != 0;
   user = (f->error_code & PF_U) != 0;
 
+  /*
   if(user)
   {
      exit(-1);
      return;
-  }
+  }*/
 
   /* To implement virtual memory, delete the rest of the function
      body, and replace it with code that brings in the page to
      which fault_addr refers. */
-  printf ("Page fault at %p: %s error %s page in %s context.\n",
-          fault_addr,
-          not_present ? "not present" : "rights violation",
-          write ? "writing" : "reading",
-          user ? "user" : "kernel");
-  kill (f);
+
+  struct thread * t = thread_current();
+  struct spte to_find;
+  to_find.pte = lookup_page(t->pagedir, ((unsigned int)fault_addr)&(~0x3FF), false);
+  struct spte * spte = hash_entry(hash_find(&t->spt, &to_find.elem), struct spte, elem);
+  void * page = vm_get_page(spte->zero);
+  if (spte->file != NULL)
+  {
+	  //load from file
+	  file_seek(spte->file, spte->offset);
+	  file_read(spte->file, page, spte->length);
+	  if (spte->length < 0x400 && spte->zero)
+	  {
+		  memset(page + spte->length, 0, 0x400 - spte->length);
+	  }
+  }
+  else {
+	  if (spte->zero)
+	  {
+		  memset(page, 0, 0x400);
+	  }
+  }
 }
 
