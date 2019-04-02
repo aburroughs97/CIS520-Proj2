@@ -5,6 +5,7 @@
 #include "threads/pte.h"
 #include <stdbool.h>
 #include <hash.h>
+#include "threads/vaddr.h"
 
 static unsigned int **frame_table[16];
 
@@ -28,12 +29,12 @@ bool spte_hash_less(const struct hash_elem *a, const struct hash_elem *b, void *
 
 int fd_no(void * addr)
 {
-	return ((unsigned int)addr >> (32 - 10))&0x3FF;
+	return ((unsigned int)vtop(addr) >> (32 - 10))&0x3FF;
 }
 
 int ft_no(void *addr)
 {
-	return ((unsigned int)addr >> (32 - 20))&0x3FF;
+	return ((unsigned int)vtop(addr) >> (32 - 20))&0x3FF;
 }
 
 void * vm_get_page(bool zero)
