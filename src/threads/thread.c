@@ -510,8 +510,6 @@ init_thread (struct thread *t, const char *name, int priority)
   t->executable_file = NULL;
   t->ready_to_clear = false;
 
-  hash_init(&t->spt, spte_hash_func, spte_hash_less, 0);
-
   old_level = intr_disable ();
   list_push_back (&all_list, &t->allelem);
   intr_set_level (old_level);

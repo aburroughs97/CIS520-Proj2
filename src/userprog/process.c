@@ -136,6 +136,10 @@ start_process (void *args)
   if_.cs = SEL_UCSEG;
   if_.eflags = FLAG_IF | FLAG_MBS;
 
+  struct thread * t = thread_current();
+
+  hash_init(&t->spt, spte_hash_func, spte_hash_less, 0);
+
   int len;
   bool needed;
   break_filename(args, &len, &needed);
@@ -148,8 +152,6 @@ start_process (void *args)
   /* If load failed, quit. */
 
   palloc_free_page (file_name);
-  
-  struct thread * t = thread_current();
 
   if (!success)
 	  t->status_code = -1;
