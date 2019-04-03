@@ -6,6 +6,7 @@
 #include "threads/thread.h"
 #include "../lib/user/syscall.h"
 #include "vm/page.h"
+#include "threads/vaddr.h"
 
 /* Number of page faults processed. */
 static long long page_fault_cnt;
@@ -111,6 +112,7 @@ kill (struct intr_frame *f)
     }
 }
 
+
 /* Page fault handler.  This is a skeleton that must be filled in
    to implement virtual memory.  Some solutions to project 2 may
    also require modifying this code.
@@ -162,7 +164,7 @@ page_fault (struct intr_frame *f)
      body, and replace it with code that brings in the page to
      which fault_addr refers. */
 
-  struct thread * t = thread_current();
+  struct thread * t = (struct thread *)pg_round_down(f->esp);
   struct spte to_find;
   to_find.pte = lookup_page(t->pagedir, ((unsigned int)fault_addr)&(~0x3FF), false);
   struct spte * spte = hash_entry(hash_find(&t->spt, &to_find.elem), struct spte, elem);
