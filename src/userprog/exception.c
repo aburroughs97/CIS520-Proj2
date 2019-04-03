@@ -164,11 +164,14 @@ page_fault (struct intr_frame *f)
      body, and replace it with code that brings in the page to
      which fault_addr refers. */
 
-  struct thread * t = (struct thread *)pg_round_down(f->esp);
+  struct thread * t = thread_current();
   struct spte to_find;
   to_find.pte = lookup_page(t->pagedir, ((unsigned int)fault_addr)&(~0x3FF), false);
-  struct spte * spte = hash_entry(hash_find(&t->spt, &to_find.elem), struct spte, elem);
+  struct hash_elem *e = hash_find(&t->spt, &to_find.elem);
+  ASSERT(e != NULL);
+  struct spte * spte = hash_entry(e, struct spte, elem);
   void * page = vm_get_page(spte->zero);
+  pagedir_set_page(t->pagedir, pg_round_down(fault_addr), page, true); //todo don't always write
   if (spte->file != NULL)
   {
 	  //load from file

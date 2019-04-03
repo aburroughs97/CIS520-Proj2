@@ -557,17 +557,18 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
       //   }
       if(page_zero_bytes > 0)
       {
-        vm_install_page(upage, file, ofs, page_read_bytes, true);
+		  vm_install_page(upage, file, ofs, page_read_bytes, true);
       }
       else 
       {
-        vm_install_page(upage, file, ofs, page_read_bytes, false);
+		  vm_install_page(upage, file, ofs, page_read_bytes, false);
       }
 
       /* Advance. */
       read_bytes -= page_read_bytes;
       zero_bytes -= page_zero_bytes;
       ofs += PGSIZE;
+	  upage += PGSIZE;
     }
   return true;
 }
@@ -583,14 +584,16 @@ setup_stack (void **esp)
   kpage = vm_get_page (true);
   if (kpage != NULL) 
     {
-      success = install_page (((uint8_t *) PHYS_BASE) - PGSIZE, kpage, true);
-	  vm_install_page(((uint8_t *)PHYS_BASE) - PGSIZE, NULL, 0, 0, true);
+	  success = install_page(((uint8_t *)PHYS_BASE) - PGSIZE, kpage, true);
+	  success = success && vm_install_page(((uint8_t *)PHYS_BASE) - PGSIZE, NULL, 0, 0, true);
 	  if (success)
 	  {
 		  *esp = PHYS_BASE;//splitargs(kpage);
 	  }
 	  else
-        vm_free_page (kpage);
+	  {
+		  vm_free_page(kpage);
+	  }
     }
   return success;
 }

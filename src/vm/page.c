@@ -37,6 +37,7 @@ void * vm_get_page(bool zero)
 		//evict
 		return NULL;
 	}
+	
 	return page;
 }
 
@@ -67,6 +68,12 @@ bool vm_install_page(void * upage, struct file * file, unsigned int offset, unsi
 		spte->in_memory = false;
 		spte->length = length;
 		spte->zero = zero;
+		int size = hash_size(&t->spt);
+		if (NULL != hash_find(&t->spt, &spte->elem))
+		{
+			free(spte);
+			return false;
+		}
 		hash_insert(&t->spt, &spte->elem);
 		return true;
 	}
