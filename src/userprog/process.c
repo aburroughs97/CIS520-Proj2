@@ -577,9 +577,6 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
 static bool
 setup_stack (void **esp) 
 {
-	vm_install_page(((uint8_t *)PHYS_BASE) - PGSIZE, NULL, 0, 0, true);
-	return true;
-	/*
   uint8_t *kpage;
   bool success = false;
 
@@ -587,6 +584,7 @@ setup_stack (void **esp)
   if (kpage != NULL) 
     {
       success = install_page (((uint8_t *) PHYS_BASE) - PGSIZE, kpage, true);
+	  vm_install_page(((uint8_t *)PHYS_BASE) - PGSIZE, NULL, 0, 0, true);
 	  if (success)
 	  {
 		  *esp = PHYS_BASE;//splitargs(kpage);
@@ -595,7 +593,6 @@ setup_stack (void **esp)
         vm_free_page (kpage);
     }
   return success;
-  */
 }
 
 /* Adds a mapping from user virtual address UPAGE to kernel
