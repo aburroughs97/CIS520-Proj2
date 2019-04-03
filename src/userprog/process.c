@@ -136,15 +136,13 @@ start_process (void *args)
   if_.cs = SEL_UCSEG;
   if_.eflags = FLAG_IF | FLAG_MBS;
 
-  struct thread * t = thread_current();
-
-  hash_init(&t->spt, spte_hash_func, spte_hash_less, 0);
-
   int len;
   bool needed;
   break_filename(args, &len, &needed);
   success = load (file_name, &if_.eip, &if_.esp);
   repair_filename(args, len, needed);
+
+  struct thread * t = thread_current();
 
   if(success)
 	if_.esp = splitargs(args);
@@ -358,6 +356,8 @@ load (const char *file_name, void (**eip) (void), void **esp)
   if (t->pagedir == NULL) 
     goto done;
   process_activate ();
+
+  hash_init(&t->spt, spte_hash_func, spte_hash_less, 0);
 
   /* Open executable file. */
   file = filesys_open (file_name);
