@@ -588,6 +588,7 @@ setup_stack (void **esp)
 	  success = success && vm_install_page(((uint8_t *)PHYS_BASE) - PGSIZE, NULL, 0, 0, true);
 	  if (success)
 	  {
+		  register_frame(kpage, ((uint8_t *)PHYS_BASE) - PGSIZE);
 		  *esp = PHYS_BASE;//splitargs(kpage);
 	  }
 	  else

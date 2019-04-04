@@ -172,6 +172,7 @@ page_fault (struct intr_frame *f)
   struct spte * spte = hash_entry(e, struct spte, elem);
   void * page = vm_get_page(spte->zero);
   pagedir_set_page(t->pagedir, pg_round_down(fault_addr), page, true); //todo don't always write
+  register_frame(page, pg_round_down(fault_addr));
   if (spte->file != NULL)
   {
 	  //load from file

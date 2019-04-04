@@ -37,7 +37,7 @@ void * vm_get_page(bool zero)
 		//evict
 		return NULL;
 	}
-	
+
 	return page;
 }
 
@@ -90,4 +90,10 @@ void vm_init()
 			frame_table[i][j] = NULL; //no pte currently using
 		}
 	}
+}
+
+void register_frame(void * kpage, void * upage)
+{
+	void * pte = lookup_page(thread_current()->pagedir, upage, false);
+	frame_table[fd_no(kpage)][ft_no(kpage)] = pte;
 }

@@ -16,6 +16,7 @@ struct spte
 	struct hash_elem elem;
 };
 
+void register_frame(void * kpage, void * upage);
 void * vm_get_page(bool zero);
 void vm_free_page(void * page);
 bool vm_install_page(void * upage, struct file * file, unsigned int offset, unsigned int length, bool zero);
