@@ -229,7 +229,7 @@ free_spte (struct hash_elem *e, void *aux)
   struct spte * spte = hash_entry(e, struct spte, elem);
 
   //Free frame table entry
-  void *page = pte_get_page(&spte->pte);
+  void *page = pte_get_page(*spte->pte);
   clear_frame(page);
   free(spte);
 }
