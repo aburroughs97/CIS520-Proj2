@@ -168,7 +168,30 @@ page_fault (struct intr_frame *f)
   struct spte to_find;
   to_find.pte = lookup_page(t->pagedir, ((unsigned int)fault_addr)&(~0x3FF), false);
   struct hash_elem *e = hash_find(&t->spt, &to_find.elem);
-  ASSERT(e != NULL);
+  if (e == NULL)
+  {
+	  //detect going beneath the stack
+	  if (fault_addr < f->esp)
+	  {
+		  if (fault_addr >= f->esp - 30)
+		  {
+			  if (vm_install_page(pg_round_down(fault_addr), NULL, 0, 0, true))
+			  {
+				  e = hash_find(&t->spt, &to_find.elem);
+			  }
+		  }
+	  }
+	  else if(fault_addr<PHYS_BASE){ //going above sometimes happens too
+		  if (vm_install_page(pg_round_down(fault_addr), NULL, 0, 0, true))
+		  {
+			  e = hash_find(&t->spt, &to_find.elem);
+		  }
+	  }
+	  if (e == NULL)
+	  {
+		  exit(-1);
+	  }
+  }
   struct spte * spte = hash_entry(e, struct spte, elem);
   void * page = vm_get_page(spte->zero);
   pagedir_set_page(t->pagedir, pg_round_down(fault_addr), page, true); //todo don't always write
@@ -176,6 +199,7 @@ page_fault (struct intr_frame *f)
   if (spte->file != NULL)
   {
 	  //load from file
+	  thread_yield(); //let other threads go for a second
 	  file_seek(spte->file, spte->offset);
 	  file_read(spte->file, page, spte->length);
 	  if (spte->length < 0x400 && spte->zero)

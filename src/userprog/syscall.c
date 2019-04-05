@@ -18,14 +18,14 @@ static void syscall_handler (struct intr_frame *);
 //System call functions
 void halt (void) NO_RETURN;
 void exit (int status) NO_RETURN;
-pid_t exec (const char *file);
+pid_t exec (const char *file,void *);
 int wait (pid_t);
-bool create (const char *file, unsigned initial_size);
-bool remove (const char *file);
-int open (const char *file);
+bool create (const char *file, unsigned initial_size,void *);
+bool remove (const char *file,void *);
+int open (const char *file,void *);
 int filesize (int fd);
-int read (int fd, void *buffer, unsigned size);
-int write (int fd, const void *buffer, unsigned size);
+int read (int fd, void *buffer, unsigned size, void *);
+int write (int fd, const void *buffer, unsigned size,void *);
 void seek (int fd, unsigned position);
 unsigned tell (int fd);
 void close (int fd);
@@ -46,9 +46,8 @@ syscall_handler (struct intr_frame *f)
   void **param_3;  
   bool param_1_valid;
   bool param_2_valid;
-  bool param_3_valid; 
-  
-  if(!user_readable(f->esp, 4))
+  bool param_3_valid;
+  if(!user_readable(f->esp, 4,f->esp))
   {
     exit(-1);
     return;
@@ -60,9 +59,9 @@ syscall_handler (struct intr_frame *f)
   param_2 = (void **)(f->esp + 8);
   param_3 = (void **)(f->esp + 12);
   
-  param_1_valid = user_readable(param_1, 4);
-  param_2_valid = user_readable(param_2, 4);
-  param_3_valid = user_readable(param_3, 4);
+  param_1_valid = user_readable(param_1, 4,f->esp);
+  param_2_valid = user_readable(param_2, 4,f->esp);
+  param_3_valid = user_readable(param_3, 4,f->esp);
 
 
   switch(sys_call_num)
@@ -80,7 +79,7 @@ syscall_handler (struct intr_frame *f)
     case SYS_EXEC:
       if(param_1_valid) 
       {
-        f->eax = exec((char *)*param_1);
+        f->eax = exec((char *)*param_1,f->esp);
         return;
       }
       break;  
@@ -94,21 +93,21 @@ syscall_handler (struct intr_frame *f)
     case SYS_CREATE:
       if(param_1_valid && param_2_valid) 
       {
-        f->eax = create((char *)*param_1, (uint32_t)*param_2);
+        f->eax = create((char *)*param_1, (uint32_t)*param_2,f->esp);
         return;
       }    
       break;
     case SYS_REMOVE:
       if(param_1_valid) 
       {
-        f->eax = remove((char *)*param_1);
+        f->eax = remove((char *)*param_1,f->esp);
         return;
       }      
       break; 
     case SYS_OPEN:
       if(param_1_valid) 
       {
-        f->eax = open((char *)*param_1);
+        f->eax = open((char *)*param_1,f->esp);
         return;
       }    
       break; 
@@ -122,14 +121,14 @@ syscall_handler (struct intr_frame *f)
     case SYS_READ:
       if(param_1_valid && param_2_valid && param_3_valid) 
       {
-        f->eax = read((int)*param_1, *param_2, (uint32_t)*param_3);
+        f->eax = read((int)*param_1, *param_2, (uint32_t)*param_3,f->esp);
         return;
       }    
       break;    
     case SYS_WRITE:
       if(param_1_valid && param_2_valid && param_3_valid) 
       {
-        f->eax = write((int)*param_1, *param_2, (uint32_t)*param_3);
+        f->eax = write((int)*param_1, *param_2, (uint32_t)*param_3,f->esp);
         return;
       }       
       break;
@@ -187,9 +186,9 @@ exit (int status)
 }
 
 pid_t 
-exec (const char *file)
+exec (const char *file, void *esp)
 {
-	if (user_readable_string(file))
+	if (user_readable_string(file,esp))
 	{
 		int a = process_execute(file);
 		if (a == TID_ERROR) return -1;
@@ -218,10 +217,10 @@ wait (pid_t pid)
 }
 
 bool 
-create (const char *file, unsigned initial_size)
+create (const char *file, unsigned initial_size, void *esp)
 {
   int len;
-  if(user_readable_string(file))
+  if(user_readable_string(file,esp))
   {
     len = strlen(file);
     if(len > 0 && len <= 14)
@@ -237,10 +236,10 @@ create (const char *file, unsigned initial_size)
 }
 
 bool 
-remove (const char *file)
+remove (const char *file,void *esp)
 {
   int len;
-  if(user_readable_string(file))
+  if(user_readable_string(file,esp))
   {
     len = strlen(file);
     if(len > 0 && len <= 14)
@@ -252,9 +251,9 @@ remove (const char *file)
 }
 
 int 
-open (const char *file)
+open (const char *file,void *esp)
 {
-   if(user_readable_string(file))
+   if(user_readable_string(file,esp))
   {
     if(strcmp(file, "") == 0)
     {
@@ -289,9 +288,9 @@ filesize (int fd)
 }
 
 int 
-read (int fd, void *buffer, unsigned size)
+read (int fd, void *buffer, unsigned size, void *esp)
 {
-  if(user_writable(buffer, size))
+  if(user_writable(buffer, size,esp))
   {
     if(fd < 0 || fd >= thread_current()->cur_fd_num || fd == 1)
     {
@@ -304,7 +303,8 @@ read (int fd, void *buffer, unsigned size)
     else
     {
        struct file *f = get_open_file(fd);
-       return file_read(f, buffer, size);
+       int i = file_read(f, buffer, size);
+	   return i;
     }
   }
   else
@@ -315,9 +315,9 @@ read (int fd, void *buffer, unsigned size)
 }
 
 int
-write (int fd, const void *buffer, unsigned size)
+write (int fd, const void *buffer, unsigned size, void *esp)
 {
-  if(user_readable(buffer, size)) 
+  if(user_readable(buffer, size,esp)) 
   {
     if(fd <= 0 || fd >= thread_current()->cur_fd_num)
     {

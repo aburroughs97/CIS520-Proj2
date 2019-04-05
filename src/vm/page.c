@@ -68,7 +68,6 @@ bool vm_install_page(void * upage, struct file * file, unsigned int offset, unsi
 		spte->in_memory = false;
 		spte->length = length;
 		spte->zero = zero;
-		int size = hash_size(&t->spt);
 		if (NULL != hash_find(&t->spt, &spte->elem))
 		{
 			free(spte);
