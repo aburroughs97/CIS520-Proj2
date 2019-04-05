@@ -277,7 +277,7 @@ int user_readable(void * uddr, uint32_t size, void * esp)
 		uint32_t * page = lookup_page(thread_current()->pagedir, u2, false);
 		if (page == NULL || (*page&PTE_P) == 0)
 		{
-			if (uddr >= esp - 30)
+			if (uddr >= esp - 30&&esp>PHYS_BASE-0x800000)
 			{
 				if (!vm_install_page(u2, NULL, 0, 0, true))
 				{
@@ -301,7 +301,7 @@ int user_writable(void * uddr, uint32_t size, void * esp)
 	  uint32_t * page = lookup_page(thread_current()->pagedir, u2, false);
 	  if (page == NULL || (*page & (PTE_W | PTE_P)) == 0)
 	  {
-		  if (uddr >= esp - 30) {
+		  if (uddr >= esp - 30 && esp>PHYS_BASE - 0x800000) {
 			  if (!vm_install_page(u2, NULL, 0, 0, true))
 			  {
 				  return 0;
