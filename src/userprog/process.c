@@ -14,7 +14,9 @@
 #include "threads/flags.h"
 #include "threads/init.h"
 #include "threads/interrupt.h"
+#include "threads/malloc.h"
 #include "threads/palloc.h"
+#include "threads/pte.h"
 #include "threads/thread.h"
 #include "threads/vaddr.h"
 #include "userprog/syscall.h"
@@ -221,13 +223,23 @@ process_wait(tid_t child_tid)
 	return -1;
 }
 
+void 
+free_spte (struct hash_elem *e, void *aux)
+{
+  struct spte * spte = hash_entry(e, struct spte, elem);
+
+  //Free frame table entry
+  void *page = pte_get_page(&spte->pte);
+  clear_frame(page);
+  free(spte);
+}
+
 /* Free the current process's resources. */
 void
 process_exit (void)
 {
   struct thread *cur = thread_current ();
   uint32_t *pd;
-
   //cleanup_thread(cur);
 
   /* Destroy the current process's page directory and switch back
@@ -237,6 +249,10 @@ process_exit (void)
 	  file_close(cur->executable_file);
   }
   pd = cur->pagedir;
+
+  //Reclaim all pages
+  hash_destroy(&cur->spt, free_spte);
+
   if (pd != NULL) 
     {
 	  cur->pagedir = NULL;

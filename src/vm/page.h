@@ -23,5 +23,6 @@ bool vm_install_page(void * upage, struct file * file, unsigned int offset, unsi
 void vm_init();
 unsigned int spte_hash_func(const struct hash_elem *e, void *aux);
 bool spte_hash_less(const struct hash_elem *a, const struct hash_elem *b, void *aux);
+void clear_frame(void *kpage);
 
 #endif

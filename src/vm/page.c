@@ -96,3 +96,8 @@ void register_frame(void * kpage, void * upage)
 	void * pte = lookup_page(thread_current()->pagedir, upage, false);
 	frame_table[fd_no(kpage)][ft_no(kpage)] = pte;
 }
+
+void clear_frame(void *kpage)
+{
+	frame_table[fd_no(kpage)][ft_no(kpage)] = NULL;
+}
