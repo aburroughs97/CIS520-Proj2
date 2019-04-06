@@ -14,12 +14,13 @@ struct spte
 	unsigned int length;
 	int *pte;
 	struct hash_elem elem;
+	bool writable;
 };
 
 void register_frame(void * kpage, void * upage);
 void * vm_get_page(bool zero);
 void vm_free_page(void * page);
-bool vm_install_page(void * upage, struct file * file, unsigned int offset, unsigned int length, bool zero);
+bool vm_install_page(void * upage, struct file * file, unsigned int offset, unsigned int length, bool zero, bool writable);
 void vm_init();
 unsigned int spte_hash_func(const struct hash_elem *e, void *aux);
 bool spte_hash_less(const struct hash_elem *a, const struct hash_elem *b, void *aux);

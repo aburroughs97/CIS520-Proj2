@@ -173,16 +173,16 @@ page_fault (struct intr_frame *f)
 	  //detect going beneath the stack
 	  if (fault_addr < f->esp)
 	  {
-		  if (fault_addr >= f->esp - 30)
+		  if (fault_addr >= f->esp - 32)
 		  {
-			  if (vm_install_page(pg_round_down(fault_addr), NULL, 0, 0, true))
+			  if (vm_install_page(pg_round_down(fault_addr), NULL, 0, 0, true,true))
 			  {
 				  e = hash_find(&t->spt, &to_find.elem);
 			  }
 		  }
 	  }
 	  else if(fault_addr<PHYS_BASE&&fault_addr>f->esp){ //going above sometimes happens too
-		  if (vm_install_page(pg_round_down(fault_addr), NULL, 0, 0, true))
+		  if (vm_install_page(pg_round_down(fault_addr), NULL, 0, 0, true,true))
 		  {
 			  e = hash_find(&t->spt, &to_find.elem);
 		  }
@@ -194,7 +194,7 @@ page_fault (struct intr_frame *f)
   }
   struct spte * spte = hash_entry(e, struct spte, elem);
   void * page = vm_get_page(spte->zero);
-  pagedir_set_page(t->pagedir, pg_round_down(fault_addr), page, true); //todo don't always write
+  pagedir_set_page(t->pagedir, pg_round_down(fault_addr), page, spte->writable);
   register_frame(page, pg_round_down(fault_addr));
   if (spte->file != NULL)
   {

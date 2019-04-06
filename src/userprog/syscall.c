@@ -418,7 +418,7 @@ mmap (int fd, void *addr)
       size_t page_read_bytes = read_bytes < PGSIZE ? read_bytes : PGSIZE;
       size_t page_zero_bytes = PGSIZE - page_read_bytes;
 
-      if(vm_install_page(addr, file, offset, page_read_bytes, true))
+      if(vm_install_page(addr, file, offset, page_read_bytes, true,true)) //TODO make not all writeable
       {
         struct map_item *m = malloc(sizeof(*m));
         m->map_id = mid;

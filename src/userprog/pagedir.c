@@ -280,7 +280,7 @@ int user_readable(void * uddr, uint32_t size, void * esp)
 		{
 			if (uddr >= esp - 30&&esp>PHYS_BASE-0x800000)
 			{
-				if (!vm_install_page(u2, NULL, 0, 0, true))
+				if (!vm_install_page(u2, NULL, 0, 0, true,true))
 				{
 					return 0;
 				}
@@ -312,7 +312,7 @@ int user_writable(void * uddr, uint32_t size, void * esp)
 	  if (page == NULL || (*page & (PTE_W | PTE_P)) == 0)
 	  {
 		  if (uddr >= esp - 30 && esp>PHYS_BASE - 0x800000) {
-			  if (!vm_install_page(u2, NULL, 0, 0, true))
+			  if (!vm_install_page(u2, NULL, 0, 0, true,true))
 			  {
 				  return 0;
 			  }
