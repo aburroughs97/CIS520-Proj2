@@ -7,6 +7,7 @@
 #include "threads/pte.h"
 #include "threads/palloc.h"
 #include "threads/thread.h"
+#include "vm/page.h"
 #include <debug.h>
 
 static uint32_t *active_pd (void);
@@ -284,7 +285,16 @@ int user_readable(void * uddr, uint32_t size, void * esp)
 					return 0;
 				}
 			}
-			else return 0;
+			else {
+				struct thread * t = thread_current();
+				struct spte to_find;
+				to_find.pte = page;
+				struct spte * spte = hash_entry(hash_find(&t->spt, &to_find.elem), struct spte, elem);
+				if (spte == NULL)
+				{
+					return 0;
+				}
+			}
 		}
 	}
   return 1;
@@ -307,7 +317,17 @@ int user_writable(void * uddr, uint32_t size, void * esp)
 				  return 0;
 			  }
 		  }
-		  else return 0;
+		  else
+		  {
+			  struct thread * t = thread_current();
+			  struct spte to_find;
+			  to_find.pte = page;
+			  struct spte * spte = hash_entry(hash_find(&t->spt, &to_find.elem), struct spte, elem);
+			  if (spte == NULL)
+			  {
+				  return 0;
+			  }
+		  }
 	  }
   }
   return 1;
