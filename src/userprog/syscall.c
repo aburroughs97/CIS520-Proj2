@@ -12,6 +12,7 @@
 #include "../src/devices/input.h"
 #include "../src/filesys/filesys.h"
 #include "../src/filesys/file.h"
+#include "threads/vaddr.h"
 #include "vm/page.h"
 
 static void syscall_handler (struct intr_frame *);
@@ -390,8 +391,10 @@ mmap (int fd, void *addr)
     return -1;
   }
   int size = filesize(fd);
-  if(size != 0 && addr != NULL && addr != 0)
+  if(size == 0 || addr == NULL || pg_ofs (addr) != 0)
   {
+    return -1;
+  }
     //TODO: Check addr page alignment and valid page range
     
     int mid = thread_current()->cur_mapid++;
@@ -402,7 +405,8 @@ mmap (int fd, void *addr)
       return -1;
     }
 
-    off_t length = file_length (file);
+    struct file *file2 = file_reopen(file);
+    off_t length = file_length (file2);
 
     if (length <= 0) 
     {
@@ -418,7 +422,7 @@ mmap (int fd, void *addr)
       size_t page_read_bytes = read_bytes < PGSIZE ? read_bytes : PGSIZE;
       size_t page_zero_bytes = PGSIZE - page_read_bytes;
 
-      if(vm_install_page(addr, file, offset, page_read_bytes, true,true)) //TODO make not all writeable
+      if(vm_install_page(addr, file2, offset, page_read_bytes, true, true))
       {
         struct map_item *m = malloc(sizeof(*m));
         m->map_id = mid;
@@ -438,11 +442,6 @@ mmap (int fd, void *addr)
       addr += PGSIZE;
       offset += PGSIZE;
     } 
-  }
-  else 
-  {
-    return -1;
-  }
 }
 
 void 
@@ -467,13 +466,15 @@ munmap (mapid_t mapping)
       if(pagedir_is_dirty(thread_current()->pagedir, item->page)) 
       {
 
+        //write()
       }
 
       vm_free_page(item->page);
 
       e = list_remove(&item->elem);
+
+      free(item->spt_entry);
       free(item);
     }
-
   }
 }
