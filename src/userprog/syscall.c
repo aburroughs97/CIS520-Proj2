@@ -309,7 +309,6 @@ read (int fd, void *buffer, unsigned size, void *esp)
   }
   else
   {
-	  printf("Dying\n");
     exit(-1);
     return 0;
   }
