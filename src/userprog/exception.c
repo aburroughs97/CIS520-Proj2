@@ -181,7 +181,7 @@ page_fault (struct intr_frame *f)
 			  }
 		  }
 	  }
-	  else if(fault_addr<PHYS_BASE){ //going above sometimes happens too
+	  else if(fault_addr<PHYS_BASE&&fault_addr>f->esp){ //going above sometimes happens too
 		  if (vm_install_page(pg_round_down(fault_addr), NULL, 0, 0, true))
 		  {
 			  e = hash_find(&t->spt, &to_find.elem);

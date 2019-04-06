@@ -271,7 +271,7 @@ int user_readable(void * uddr, uint32_t size, void * esp)
 {
 	if (uddr == 0) return 0;
 	uint32_t u;
-	for (u = pg_no(uddr); u <= pg_no(uddr + size); u++)
+	for (u = pg_no(uddr); u <= pg_no(uddr + size-1); u++)
 	{
 		void * u2 = (uint32_t*)((uint32_t)u << PGBITS);
 		if (u2 >= PHYS_BASE) return 0;
@@ -285,7 +285,7 @@ int user_readable(void * uddr, uint32_t size, void * esp)
 					return 0;
 				}
 			}
-			else {
+			else if(page!=NULL){
 				struct thread * t = thread_current();
 				struct spte to_find;
 				to_find.pte = page;
@@ -304,7 +304,7 @@ int user_writable(void * uddr, uint32_t size, void * esp)
 {
 	if (uddr == 0) return 0;
   uint32_t u;
-  for (u = pg_no(uddr); u <= pg_no(uddr + size); u++)
+  for (u = pg_no(uddr); u <= pg_no(uddr + size-1); u++)
   {
 	  void * u2 = (uint32_t*)((uint32_t)u << PGBITS);
 	  if (u2 >= PHYS_BASE) return 0;
@@ -317,7 +317,7 @@ int user_writable(void * uddr, uint32_t size, void * esp)
 				  return 0;
 			  }
 		  }
-		  else
+		  else if(page!=NULL)
 		  {
 			  struct thread * t = thread_current();
 			  struct spte to_find;

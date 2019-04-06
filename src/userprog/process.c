@@ -571,14 +571,10 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
       //     vm_free_page (kpage);
       //     return false; 
       //   }
-      if(page_zero_bytes > 0)
-      {
-		  vm_install_page(upage, file, ofs, page_read_bytes, true);
-      }
-      else 
-      {
-		  vm_install_page(upage, file, ofs, page_read_bytes, false);
-      }
+	  if (!vm_install_page(upage, file, ofs, page_read_bytes, page_zero_bytes > 0))
+	  {
+		  return false;
+	  }
 
       /* Advance. */
       read_bytes -= page_read_bytes;
