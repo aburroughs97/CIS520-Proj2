@@ -15,6 +15,14 @@ enum thread_status
     THREAD_DYING        /* About to be destroyed. */
   };
 
+struct map_item
+{
+  int map_id;
+  void * page;
+  struct spte * spt_entry;
+  struct list_elem elem;
+};
+
 /* Thread identifier type.
    You can redefine this to whatever type you like. */
 typedef int tid_t;
@@ -109,7 +117,9 @@ struct thread
       bool ready_to_clear;
       struct file * executable_file;
 
-	  struct hash spt;
+	    struct list mapped_list;
+      int cur_mapid;
+	    struct hash spt;
     #endif
 
     /* Owned by thread.c. */

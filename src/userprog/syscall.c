@@ -1,6 +1,7 @@
 #include "userprog/syscall.h"
 #include <stdio.h>
 #include <string.h>
+#include <stdlib.h>
 #include "lib/kernel/stdio.h"
 #include <syscall-nr.h>
 #include "threads/interrupt.h"
@@ -392,15 +393,87 @@ mmap (int fd, void *addr)
   if(size != 0 && addr != NULL && addr != 0)
   {
     //TODO: Check addr page alignment and valid page range
+    
+    int mid = thread_current()->cur_mapid++;
 
+    struct file *file = get_open_file(fd);
+    if(file == NULL)
+    {
+      return -1;
+    }
+
+    off_t length = file_length (file);
+
+    if (length <= 0) 
+    {
+      return -1;
+    }
+
+    int pag_num = length / PGSIZE + 1;
+    off_t offset = 0;
+    uint32_t read_bytes = length;
+
+    while (read_bytes > 0)
+    {
+      size_t page_read_bytes = read_bytes < PGSIZE ? read_bytes : PGSIZE;
+      size_t page_zero_bytes = PGSIZE - page_read_bytes;
+
+      if(vm_install_page(addr, file, offset, page_read_bytes, true))
+      {
+        struct map_item *m = malloc(sizeof(*m));
+        m->map_id = mid;
+
+        struct thread * t = thread_current();
+	      struct spte to_find;
+	      to_find.pte = lookup_page(t->pagedir, addr, false);
+	      struct spte * spte = hash_entry(hash_find(&t->spt, &to_find.elem), struct spte, elem);
+        
+        m->page = addr;
+        m->spt_entry = spte;
+
+        list_push_front(&thread_current()->mapped_list, &m->elem);
+      }
+
+      read_bytes -= page_read_bytes;
+      addr += PGSIZE;
+      offset += PGSIZE;
+    } 
   }
   else 
   {
     return -1;
   }
 }
+
 void 
 munmap (mapid_t mapping)
 {
+  if(mapping <= 0)
+  {
+    return;
+  }
 
+  struct thread * t = thread_current();
+  struct list_elem * e;
+
+  for(e = list_begin(&t->mapped_list); e != list_end(&t->mapped_list); e = list_next(e))
+  {
+    struct map_item * item = list_entry(e, struct map_item, elem);
+
+    if(item->map_id == mapping)
+    {
+      struct spte *spt_entry = item->spt_entry;
+      file_seek(spt_entry->file, 0);
+      if(pagedir_is_dirty(thread_current()->pagedir, item->page)) 
+      {
+
+      }
+
+      vm_free_page(item->page);
+
+      e = list_remove(&item->elem);
+      free(item);
+    }
+
+  }
 }

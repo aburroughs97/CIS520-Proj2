@@ -71,6 +71,8 @@ process_execute(const char *file_name)
   struct thread *t = get_thread(tid);
   t->cur_fd_num = 2;
   list_init(&t->open_files);
+  list_init(&t->mapped_list);
+  t->cur_mapid = 2;
 
   if (tid == TID_ERROR)
     palloc_free_page (fn_copy);
