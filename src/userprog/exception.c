@@ -7,6 +7,8 @@
 #include "../lib/user/syscall.h"
 #include "vm/page.h"
 #include "threads/vaddr.h"
+#include "devices/block.h"
+#include "threads/pte.h"
 
 /* Number of page faults processed. */
 static long long page_fault_cnt;
@@ -167,6 +169,10 @@ page_fault (struct intr_frame *f)
   struct thread * t = thread_current();
   struct spte to_find;
   to_find.pte = lookup_page(t->pagedir, ((unsigned int)fault_addr)&(~0x3FF), false);
+  if (to_find.pte == NULL)
+  {
+	  printf("%08x\n", fault_addr);
+  }
   struct hash_elem *e = hash_find(&t->spt, &to_find.elem);
   if (e == NULL)
   {
@@ -193,7 +199,9 @@ page_fault (struct intr_frame *f)
 	  }
   }
   struct spte * spte = hash_entry(e, struct spte, elem);
+  ASSERT(spte != NULL);
   void * page = vm_get_page(spte->zero);
+  ASSERT(page != NULL);
   pagedir_set_page(t->pagedir, pg_round_down(fault_addr), page, spte->writable);
   register_frame(page, pg_round_down(fault_addr));
   if (spte->file != NULL)
@@ -207,7 +215,18 @@ page_fault (struct intr_frame *f)
 		  memset(page + spte->length, 0, 0x400 - spte->length);
 	  }
   }
-  else {
+  else if (spte->swap_index>=0) {
+	  struct block * swap_block = block_get_role(BLOCK_SWAP);
+	  ASSERT(swap_block != NULL);
+	  for (int i = 0; i < 8; i++)
+	  {
+		  block_read(swap_block, spte->swap_index*8 + i, page + i * 512);
+	  }
+	  //read in values
+	  //update taken value
+	  free_swap_page(spte->swap_index);
+	  spte->swap_index = -1;
+  }else {
 	  if (spte->zero)
 	  {
 		  memset(page, 0, 0x400);

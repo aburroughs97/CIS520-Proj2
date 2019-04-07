@@ -9,7 +9,13 @@
 #include "threads/vaddr.h"
 #include <debug.h>
 
-static unsigned int **frame_table[16];
+struct fte
+{
+	unsigned int *pte;
+	struct hash * spt;
+};
+
+static struct fte *frame_table[32];
 
 unsigned int spte_hash_func(const struct hash_elem *e, void *aux UNUSED)
 {
@@ -23,12 +29,12 @@ bool spte_hash_less(const struct hash_elem *a, const struct hash_elem *b, void *
 
 int fd_no(void * addr)
 {
-	return ((unsigned int)vtop(addr) >> (32 - 10))&0x3FF;
+	return ((unsigned int)vtop(addr) >> (32 - 11))&0x3FF;
 }
 
 int ft_no(void *addr)
 {
-	return ((unsigned int)vtop(addr) >> (32 - 20))&0x3FF;
+	return ((unsigned int)vtop(addr) >> (32 - 21))&0x1FF;
 }
 
 struct swap_page
@@ -41,7 +47,7 @@ struct swap_page * swap_table = NULL;
 int get_swap_page()
 {
 	struct block * swap_block = block_get_role(BLOCK_SWAP);
-	unsigned int swap_size = block_size(swap_block);
+	unsigned int swap_size = block_size(swap_block)/8;
 	if (swap_table == NULL)
 	{
 		swap_table = malloc(sizeof(struct swap_page)*swap_size);
@@ -60,38 +66,44 @@ int get_swap_page()
 		}
 	}
 	if (swap_page == -1) PANIC("No more swap disk space");
+	swap_table[swap_page].taken = true;
 	return swap_page;
+}
+
+void free_swap_page(int page)
+{
+	swap_table[page].taken = false;
 }
 
 static unsigned int cur_fte_index = 0;
 
-void * find_page()
+struct fte * find_page()
 {
-	unsigned int * categories[3] = { NULL };
+	struct fte * categories[3] = { NULL };
 	int searched_pages = 0;
 	while (searched_pages < 256)
 	{
-		unsigned int * pte = frame_table[cur_fte_index >> 10][cur_fte_index & 0x3FF];
-		if (pte != NULL)
+		struct fte * fte = &frame_table[cur_fte_index >> 10][cur_fte_index & 0x3FF];
+		if (fte->pte != NULL)
 		{
 			searched_pages++;
-			if (*pte&PTE_A)
+			if (*fte->pte&PTE_A)
 			{
-				if (*pte&PTE_D)
+				if (*fte->pte&PTE_D)
 				{
-					if (categories[0] == NULL) categories[0] = pte;
+					if (categories[0] == NULL) categories[0] = fte;
 				}
 				else {
-					if (categories[1] == NULL) categories[1] = pte;
+					if (categories[1] == NULL) categories[1] = fte;
 				}
 			}
 			else {
-				if (*pte&PTE_D)
+				if (*fte->pte&PTE_D)
 				{
-					if (categories[2] == NULL) categories[2] = pte;
+					if (categories[2] == NULL) categories[2] = fte;
 				}
 				else {
-					return pte;
+					return fte;
 				}
 			}
 		}
@@ -111,15 +123,38 @@ void * vm_get_page(bool zero)
 	if (page == NULL)
 	{
 		//evict
-		unsigned int * pte = find_page();
-		if (*pte&PTE_D)
+		struct fte * fte = find_page();
+		ASSERT(fte != NULL);
+		ASSERT(fte->pte != NULL);
+		ASSERT((*fte->pte&PTE_ADDR) < PHYS_BASE);
+		if (*fte->pte&PTE_D)
 		{
-
+			int swap_page = get_swap_page();
+			//write out to sectors
+			struct block * swap_block = block_get_role(BLOCK_SWAP);
+			ASSERT(swap_block != NULL);
+			for (int i = 0; i < 8; i++)
+			{
+				block_write(swap_block, swap_page * 8 + i, pte_get_page(*fte->pte) + i * 512);
+			}
+			//get spte and tell it where its data is
+			struct spte to_find;
+			to_find.pte = fte->pte;
+			struct spte * spte = hash_entry(hash_find(fte->spt, &to_find.elem), struct spte, elem);
+			ASSERT(spte != NULL);
+			spte->file = NULL;
+			spte->swap_index = swap_page;
+			//invalidate page
+			*fte->pte = *fte->pte & (~PTE_P);
+			unsigned int * pte = fte->pte;
+			fte->pte = NULL;
+			return pte_get_page(*pte);
 		} else {
-			*pte = *pte & (~PTE_P);
+			*fte->pte = *fte->pte & (~PTE_P);
+			unsigned int * pte = fte->pte;
+			fte->pte = NULL;
 			return pte_get_page(*pte);
 		}
-		return NULL;
 	}
 
 	return page;
@@ -153,6 +188,7 @@ bool vm_install_page(void * upage, struct file * file, unsigned int offset, unsi
 		spte->length = length;
 		spte->zero = zero;
 		spte->writable = writable;
+		spte->swap_index = -1;
 		if (NULL != hash_find(&t->spt, &spte->elem))
 		{
 			free(spte);
@@ -166,12 +202,13 @@ bool vm_install_page(void * upage, struct file * file, unsigned int offset, unsi
 
 void vm_init()
 {
-	for (int i = 0; i < 16; i++)
+	for (int i = 0; i < 32; i++)
 	{
 		frame_table[i] = palloc_get_page(0);
-		for (int j = 0; j < 1024; j++)
+		for (int j = 0; j < 512; j++)
 		{
-			frame_table[i][j] = NULL; //no pte currently using
+			frame_table[i][j].pte = NULL; //no pte currently using
+			frame_table[i][j].spt = NULL;
 		}
 	}
 }
@@ -179,10 +216,11 @@ void vm_init()
 void register_frame(void * kpage, void * upage)
 {
 	void * pte = lookup_page(thread_current()->pagedir, upage, false);
-	frame_table[fd_no(kpage)][ft_no(kpage)] = pte;
+	frame_table[fd_no(kpage)][ft_no(kpage)].pte = pte;
+	frame_table[fd_no(kpage)][ft_no(kpage)].spt = &thread_current()->spt;
 }
 
 void clear_frame(void *kpage)
 {
-	frame_table[fd_no(kpage)][ft_no(kpage)] = NULL;
+	frame_table[fd_no(kpage)][ft_no(kpage)].pte = NULL;
 }
