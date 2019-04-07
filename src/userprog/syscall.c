@@ -395,8 +395,7 @@ mmap (int fd, void *addr)
   {
     return -1;
   }
-    //TODO: Check addr page alignment and valid page range
-    
+
     int mid = thread_current()->cur_mapid++;
 
     struct file *file = get_open_file(fd);
@@ -433,7 +432,7 @@ mmap (int fd, void *addr)
       offset += PGSIZE;
     } 
 
-    struct map_item *m = malloc(sizeof(*m));
+    struct map_item *m = malloc(sizeof(struct map_item));
     m->map_id = mid;
 
     struct thread * t = thread_current();
@@ -445,6 +444,7 @@ mmap (int fd, void *addr)
     m->spt_entry = spte;
     m->page_num = pag_num;
     list_push_front(&thread_current()->mapped_list, &m->elem);
+    return mid;
 }
 
 void 
@@ -458,31 +458,26 @@ munmap (mapid_t mapping)
   struct thread * t = thread_current();
   struct list_elem * e;
 
-  for(e = list_begin(&t->mapped_list); e != list_end(&t->mapped_list); e = list_next(e))
+  for(e = list_begin(&t->mapped_list); e != list_end(&t->mapped_list);)
   {
     struct map_item * item = list_entry(e, struct map_item, elem);
-
     if(item->map_id == mapping)
     {
-
       struct spte *spt_entry = item->spt_entry;
       file_seek(spt_entry->file, 0);
       int i;
       for(i = 0; i < item->page_num; i++)
       {
-
-        if(pagedir_is_dirty(thread_current()->pagedir, ((const void *) ((item->page) + (PGSIZE * i))))) 
+        if(pagedir_is_dirty(thread_current()->pagedir, (item->page + PGSIZE * i))) 
         {
-          file_write_at(item->spt_entry->file, (const void *) (item->page + (PGSIZE * i)), (PGSIZE*(item->page_num)), (PGSIZE * i));
+          file_write_at(item->spt_entry->file, item->page + PGSIZE * i, PGSIZE*item->page_num, PGSIZE * i);
         }
 
-        vm_free_page((void *) ((item->page) + (PGSIZE * i)));
-
+        vm_free_page(item->page + PGSIZE * i);
       }
-      
       e = list_remove(&item->elem);
-
+      
       free(item);
-    }
+    } else e = list_next(e);
   }
 }
