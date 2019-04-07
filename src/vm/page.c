@@ -29,20 +29,12 @@ bool spte_hash_less(const struct hash_elem *a, const struct hash_elem *b, void *
 
 int fd_no(void * addr)
 {
-<<<<<<< HEAD
 	return ((unsigned int)vtop(addr) >> (12 + 9)) & 0x1F;
-=======
-	return ((unsigned int)vtop(addr) >> (12 + 9))&0x3FF;
->>>>>>> 2e6a44edbd210315267a63e7df919c8315cdb0ee
 }
 
 int ft_no(void *addr)
 {
-<<<<<<< HEAD
 	return ((unsigned int)vtop(addr) >> 12) & 0x1FF;
-=======
-	return ((unsigned int)vtop(addr) >> (12))&0x1FF;
->>>>>>> 2e6a44edbd210315267a63e7df919c8315cdb0ee
 }
 
 struct swap_page
