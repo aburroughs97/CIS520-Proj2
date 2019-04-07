@@ -29,12 +29,20 @@ bool spte_hash_less(const struct hash_elem *a, const struct hash_elem *b, void *
 
 int fd_no(void * addr)
 {
+<<<<<<< HEAD
 	return ((unsigned int)vtop(addr) >> (12 + 9)) & 0x1F;
+=======
+	return ((unsigned int)vtop(addr) >> (12 + 9))&0x3FF;
+>>>>>>> 2e6a44edbd210315267a63e7df919c8315cdb0ee
 }
 
 int ft_no(void *addr)
 {
+<<<<<<< HEAD
 	return ((unsigned int)vtop(addr) >> 12) & 0x1FF;
+=======
+	return ((unsigned int)vtop(addr) >> (12))&0x1FF;
+>>>>>>> 2e6a44edbd210315267a63e7df919c8315cdb0ee
 }
 
 struct swap_page
@@ -184,8 +192,11 @@ void vm_free_page(void * page)
 	hash_delete(&t->spt, &spte->elem);
 	clear_frame(pte_get_page(*to_find.pte));
 	free(spte);
-	*to_find.pte = *to_find.pte & ~PTE_P;
-	palloc_free_page(page);
+	if(*to_find.pte&PTE_P)
+	{
+		palloc_free_page(pte_get_page(*to_find.pte));
+		*to_find.pte = *to_find.pte & ~PTE_P;
+	}
 }
 
 bool vm_install_page(void * upage, struct file * file, unsigned int offset, unsigned int length, bool zero, bool writable)

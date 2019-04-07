@@ -244,6 +244,15 @@ process_exit (void)
   uint32_t *pd;
   //cleanup_thread(cur);
 
+  struct list_elem *e;
+	for (e = list_begin(&cur->mapped_list); e != list_end(&cur->mapped_list);)
+	{
+		struct map_item *m = list_entry(e, struct map_item, elem);
+    e = list_next(e);
+    munmap(m->map_id);
+  }
+
+
   /* Destroy the current process's page directory and switch back
      to the kernel-only page directory. */
   if(cur->executable_file!=NULL)
