@@ -155,6 +155,7 @@ page_fault (struct intr_frame *f)
   write = (f->error_code & PF_W) != 0;
   user = (f->error_code & PF_U) != 0;
 
+  if (!not_present&&write) kill(-1);
   /*
   if(user)
   {
@@ -169,10 +170,6 @@ page_fault (struct intr_frame *f)
   struct thread * t = thread_current();
   struct spte to_find;
   to_find.pte = lookup_page(t->pagedir, ((unsigned int)fault_addr)&(~0x3FF), false);
-  if (to_find.pte == NULL)
-  {
-	  printf("%08x\n", fault_addr);
-  }
   struct hash_elem *e = hash_find(&t->spt, &to_find.elem);
   if (e == NULL)
   {
@@ -204,7 +201,18 @@ page_fault (struct intr_frame *f)
   ASSERT(page != NULL);
   pagedir_set_page(t->pagedir, pg_round_down(fault_addr), page, spte->writable);
   register_frame(page, pg_round_down(fault_addr));
-  if (spte->file != NULL)
+  if (spte->swap_index >= 0) {
+	  struct block * swap_block = block_get_role(BLOCK_SWAP);
+	  ASSERT(swap_block != NULL);
+	  for (int i = 0; i < 8; i++)
+	  {
+		  block_read(swap_block, spte->swap_index * 8 + i, page + i * 512);
+	  }
+	  //read in values
+	  //update taken value
+	  free_swap_page(spte->swap_index);
+	  spte->swap_index = -1;
+  } else if (spte->file != NULL)
   {
 	  //load from file
 	  thread_yield(); //let other threads go for a second
@@ -214,22 +222,10 @@ page_fault (struct intr_frame *f)
 	  {
 		  memset(page + spte->length, 0, 0x400 - spte->length);
 	  }
-  }
-  else if (spte->swap_index>=0) {
-	  struct block * swap_block = block_get_role(BLOCK_SWAP);
-	  ASSERT(swap_block != NULL);
-	  for (int i = 0; i < 8; i++)
-	  {
-		  block_read(swap_block, spte->swap_index*8 + i, page + i * 512);
-	  }
-	  //read in values
-	  //update taken value
-	  free_swap_page(spte->swap_index);
-	  spte->swap_index = -1;
-  }else {
+  } else {
 	  if (spte->zero)
 	  {
-		  memset(page, 0, 0x400);
+		  //memset(page, 0, 0x400);
 	  }
   }
 }

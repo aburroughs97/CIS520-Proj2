@@ -83,7 +83,7 @@ struct fte * find_page()
 	int searched_pages = 0;
 	while (searched_pages < 256)
 	{
-		struct fte * fte = &frame_table[cur_fte_index >> 10][cur_fte_index & 0x3FF];
+		struct fte * fte = &frame_table[cur_fte_index >> 9][cur_fte_index & 0x1FF];
 		if (fte->pte != NULL)
 		{
 			searched_pages++;
@@ -108,7 +108,7 @@ struct fte * find_page()
 			}
 		}
 		cur_fte_index++;
-		if (cur_fte_index == 8192) cur_fte_index = 0;
+		if (cur_fte_index == 16384) cur_fte_index = 0;
 	}
 	for (int i = 2; i >= 0; i--)
 	{
@@ -142,17 +142,18 @@ void * vm_get_page(bool zero)
 			to_find.pte = fte->pte;
 			struct spte * spte = hash_entry(hash_find(fte->spt, &to_find.elem), struct spte, elem);
 			ASSERT(spte != NULL);
-			spte->file = NULL;
 			spte->swap_index = swap_page;
 			//invalidate page
 			*fte->pte = *fte->pte & (~PTE_P);
 			unsigned int * pte = fte->pte;
 			fte->pte = NULL;
+			if (zero) memset(pte_get_page(*pte), 0, 4096);
 			return pte_get_page(*pte);
 		} else {
 			*fte->pte = *fte->pte & (~PTE_P);
 			unsigned int * pte = fte->pte;
 			fte->pte = NULL;
+			if (zero) memset(pte_get_page(*pte), 0, 4096);
 			return pte_get_page(*pte);
 		}
 	}
