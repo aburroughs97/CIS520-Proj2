@@ -160,10 +160,13 @@ page_fault (struct intr_frame *f)
 
   struct thread * t = thread_current();
   struct spte to_find;
-  to_find.pte = lookup_page(t->pagedir, pg_round_down(fault_addr), true);
+  to_find.pte = lookup_page(t->pagedir, pg_round_down(fault_addr), false);
+
+  if (to_find.pte == NULL) exit(-1);
   ASSERT(to_find.pte != NULL);
   ASSERT(!(*to_find.pte&PTE_P));
   struct hash_elem *e = hash_find(&t->spt, &to_find.elem);
+
   if (e == NULL)
   {
 	  //detect going beneath the stack
