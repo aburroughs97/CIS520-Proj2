@@ -428,7 +428,6 @@ mmap (int fd, void *addr)
 
       pag_num++;
       read_bytes -= page_read_bytes;
-      //addr += PGSIZE;
       offset += PGSIZE;
     } 
 
