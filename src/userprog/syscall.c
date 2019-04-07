@@ -453,10 +453,8 @@ munmap (mapid_t mapping)
   {
     return;
   }
-
   struct thread * t = thread_current();
   struct list_elem * e;
-
   for(e = list_begin(&t->mapped_list); e != list_end(&t->mapped_list);)
   {
     struct map_item * item = list_entry(e, struct map_item, elem);
@@ -467,11 +465,10 @@ munmap (mapid_t mapping)
       int i;
       for(i = 0; i < item->page_num; i++)
       {
-        if(pagedir_is_dirty(thread_current()->pagedir, (item->page + PGSIZE * i))) 
+        if(pagedir_is_dirty(t->pagedir, (item->page + PGSIZE * i))) 
         {
-          file_write_at(item->spt_entry->file, item->page + PGSIZE * i, PGSIZE*item->page_num, PGSIZE * i);
+          file_write_at(item->spt_entry->file, item->page + PGSIZE * i, PGSIZE, PGSIZE * i);
         }
-
         vm_free_page(item->page + PGSIZE * i);
       }
       e = list_remove(&item->elem);

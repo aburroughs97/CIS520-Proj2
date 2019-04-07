@@ -252,7 +252,6 @@ process_exit (void)
     munmap(m->map_id);
   }
 
-
   /* Destroy the current process's page directory and switch back
      to the kernel-only page directory. */
   if(cur->executable_file!=NULL)
