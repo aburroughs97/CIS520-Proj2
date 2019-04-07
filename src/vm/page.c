@@ -171,7 +171,10 @@ void vm_free_page(void * page)
 	hash_delete(&t->spt, &spte->elem);
 	free(spte);
 	if(*to_find.pte&PTE_P)
+	{
 		palloc_free_page(pte_get_page(*to_find.pte));
+		*to_find.pte = *to_find.pte & ~PTE_P;
+	}
 }
 
 bool vm_install_page(void * upage, struct file * file, unsigned int offset, unsigned int length, bool zero, bool writable)
