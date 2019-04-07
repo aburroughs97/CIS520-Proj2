@@ -18,6 +18,7 @@ enum thread_status
 struct map_item
 {
   int map_id;
+  int page_num;
   void * page;
   struct spte * spt_entry;
   struct list_elem elem;

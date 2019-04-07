@@ -408,13 +408,13 @@ mmap (int fd, void *addr)
     struct file *file2 = file_reopen(file);
     off_t length = file_length (file2);
 
-    if (length <= 0) 
+    if (length <= 0 || file2 == NULL) 
     {
       return -1;
     }
 
-    int pag_num = length / PGSIZE + 1;
-    off_t offset = 0;
+    int pag_num = 0;
+    size_t offset = 0;
     uint32_t read_bytes = length;
 
     while (read_bytes > 0)
@@ -422,26 +422,29 @@ mmap (int fd, void *addr)
       size_t page_read_bytes = read_bytes < PGSIZE ? read_bytes : PGSIZE;
       size_t page_zero_bytes = PGSIZE - page_read_bytes;
 
-      if(vm_install_page(addr, file2, offset, page_read_bytes, true, true))
+      if(!vm_install_page(addr + offset, file2, offset, page_read_bytes, false, true))
       {
-        struct map_item *m = malloc(sizeof(*m));
-        m->map_id = mid;
-
-        struct thread * t = thread_current();
-	      struct spte to_find;
-	      to_find.pte = lookup_page(t->pagedir, addr, false);
-	      struct spte * spte = hash_entry(hash_find(&t->spt, &to_find.elem), struct spte, elem);
-        
-        m->page = addr;
-        m->spt_entry = spte;
-
-        list_push_front(&thread_current()->mapped_list, &m->elem);
+        return -1;
       }
 
+      pag_num++;
       read_bytes -= page_read_bytes;
-      addr += PGSIZE;
+      //addr += PGSIZE;
       offset += PGSIZE;
     } 
+
+    struct map_item *m = malloc(sizeof(*m));
+    m->map_id = mid;
+
+    struct thread * t = thread_current();
+	  struct spte to_find;
+	  to_find.pte = lookup_page(t->pagedir, addr, false);
+	  struct spte * spte = hash_entry(hash_find(&t->spt, &to_find.elem), struct spte, elem);
+        
+    m->page = addr;
+    m->spt_entry = spte;
+    m->page_num = pag_num;
+    list_push_front(&thread_current()->mapped_list, &m->elem);
 }
 
 void 
@@ -461,19 +464,24 @@ munmap (mapid_t mapping)
 
     if(item->map_id == mapping)
     {
+
       struct spte *spt_entry = item->spt_entry;
       file_seek(spt_entry->file, 0);
-      if(pagedir_is_dirty(thread_current()->pagedir, item->page)) 
+      int i;
+      for(i = 0; i < item->page_num; i++)
       {
 
-        //write()
+        if(pagedir_is_dirty(thread_current()->pagedir, ((const void *) ((item->page) + (PGSIZE * i))))) 
+        {
+          file_write_at(item->spt_entry->file, (const void *) (item->page + (PGSIZE * i)), (PGSIZE*(item->page_num)), (PGSIZE * i));
+        }
+
+        vm_free_page((void *) ((item->page) + (PGSIZE * i)));
+
       }
-
-      vm_free_page(item->page);
-
+      
       e = list_remove(&item->elem);
 
-      free(item->spt_entry);
       free(item);
     }
   }

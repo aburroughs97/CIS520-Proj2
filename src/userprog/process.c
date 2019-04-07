@@ -244,6 +244,7 @@ process_exit (void)
   uint32_t *pd;
   //cleanup_thread(cur);
 
+
   /* Destroy the current process's page directory and switch back
      to the kernel-only page directory. */
   if(cur->executable_file!=NULL)
