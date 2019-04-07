@@ -7,6 +7,7 @@
 #include "../lib/user/syscall.h"
 #include "vm/page.h"
 #include "threads/vaddr.h"
+#include "userprog/pagedir.h"
 #include "devices/block.h"
 #include "threads/pte.h"
 
@@ -155,21 +156,13 @@ page_fault (struct intr_frame *f)
   write = (f->error_code & PF_W) != 0;
   user = (f->error_code & PF_U) != 0;
 
-  if (!not_present&&write) kill(-1);
-  /*
-  if(user)
-  {
-     exit(-1);
-     return;
-  }*/
-
-  /* To implement virtual memory, delete the rest of the function
-     body, and replace it with code that brings in the page to
-     which fault_addr refers. */
+  if (!not_present) kill(-1);
 
   struct thread * t = thread_current();
   struct spte to_find;
-  to_find.pte = lookup_page(t->pagedir, ((unsigned int)fault_addr)&(~0x3FF), false);
+  to_find.pte = lookup_page(t->pagedir, pg_round_down(fault_addr), true);
+  ASSERT(to_find.pte != NULL);
+  ASSERT(!(*to_find.pte&PTE_P));
   struct hash_elem *e = hash_find(&t->spt, &to_find.elem);
   if (e == NULL)
   {
@@ -196,17 +189,27 @@ page_fault (struct intr_frame *f)
 	  }
   }
   struct spte * spte = hash_entry(e, struct spte, elem);
+  
   ASSERT(spte != NULL);
+  
   void * page = vm_get_page(spte->zero);
+  
   ASSERT(page != NULL);
+  ASSERT(page >= PHYS_BASE);
+  
   pagedir_set_page(t->pagedir, pg_round_down(fault_addr), page, spte->writable);
+  
+  ASSERT(pte_get_page(*spte->pte) == page);
+  ASSERT(lookup_page(t->pagedir, pg_round_down(fault_addr), false) == spte->pte);
+  
   register_frame(page, pg_round_down(fault_addr));
+  
   if (spte->swap_index >= 0) {
 	  struct block * swap_block = block_get_role(BLOCK_SWAP);
 	  ASSERT(swap_block != NULL);
 	  for (int i = 0; i < 8; i++)
 	  {
-		  block_read(swap_block, spte->swap_index * 8 + i, page + i * 512);
+		  block_read(swap_block, spte->swap_index * 8 + i, pg_round_down(fault_addr)+ i * 512);
 	  }
 	  //read in values
 	  //update taken value
@@ -225,7 +228,7 @@ page_fault (struct intr_frame *f)
   } else {
 	  if (spte->zero)
 	  {
-		  //memset(page, 0, 0x400);
+		  memset(page, 0, 0x400);
 	  }
   }
 }

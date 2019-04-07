@@ -29,12 +29,12 @@ bool spte_hash_less(const struct hash_elem *a, const struct hash_elem *b, void *
 
 int fd_no(void * addr)
 {
-	return ((unsigned int)vtop(addr) >> (32 - 11))&0x3FF;
+	return ((unsigned int)vtop(addr) >> (12 + 9)) & 0x1F;
 }
 
 int ft_no(void *addr)
 {
-	return ((unsigned int)vtop(addr) >> (32 - 21))&0x1FF;
+	return ((unsigned int)vtop(addr) >> 12) & 0x1FF;
 }
 
 struct swap_page
@@ -79,11 +79,18 @@ static unsigned int cur_fte_index = 0;
 
 struct fte * find_page()
 {
-	struct fte * categories[3] = { NULL };
-	int searched_pages = 0;
+	struct fte * categories[3] = { NULL, NULL, NULL };
+	int searched_pages = 0, s = 0;
 	while (searched_pages < 256)
 	{
-		struct fte * fte = &frame_table[cur_fte_index >> 9][cur_fte_index & 0x1FF];
+		struct fte * fd = frame_table[cur_fte_index >> 9];
+		if (fd == NULL)
+		{
+			cur_fte_index = (cur_fte_index&(~0x1FF)) + 512;
+			if (cur_fte_index >= 16384) cur_fte_index = 0;
+			continue;
+		}
+		struct fte * fte = &fd[cur_fte_index & 0x1FF];
 		if (fte->pte != NULL)
 		{
 			searched_pages++;
@@ -103,12 +110,14 @@ struct fte * find_page()
 					if (categories[2] == NULL) categories[2] = fte;
 				}
 				else {
+					cur_fte_index++;
+					if (cur_fte_index >= 16384) cur_fte_index = 0;
 					return fte;
 				}
 			}
 		}
 		cur_fte_index++;
-		if (cur_fte_index == 16384) cur_fte_index = 0;
+		if (cur_fte_index >= 16384) cur_fte_index = 0;
 	}
 	for (int i = 2; i >= 0; i--)
 	{
@@ -140,11 +149,15 @@ void * vm_get_page(bool zero)
 			//get spte and tell it where its data is
 			struct spte to_find;
 			to_find.pte = fte->pte;
-			struct spte * spte = hash_entry(hash_find(fte->spt, &to_find.elem), struct spte, elem);
-			ASSERT(spte != NULL);
+			struct hash_elem * hash_elem = hash_find(fte->spt, &to_find.elem);
+			struct spte * spte = hash_entry(hash_elem, struct spte, elem);
+			ASSERT(hash_elem != NULL);
+			ASSERT(spte->swap_index == -1);
 			spte->swap_index = swap_page;
+			ASSERT(spte->pte == fte->pte);
 			//invalidate page
 			*fte->pte = *fte->pte & (~PTE_P);
+			ASSERT(!(*fte->pte & PTE_P));
 			unsigned int * pte = fte->pte;
 			fte->pte = NULL;
 			if (zero) memset(pte_get_page(*pte), 0, 4096);
@@ -157,7 +170,7 @@ void * vm_get_page(bool zero)
 			return pte_get_page(*pte);
 		}
 	}
-
+	//ASSERT(frame_table[fd_no(page)][ft_no(page)].pte == NULL);
 	return page;
 }
 
@@ -169,7 +182,9 @@ void vm_free_page(void * page)
 	to_find.pte = lookup_page(t->pagedir, page, false);
 	struct spte * spte = hash_entry(hash_find(&t->spt, &to_find.elem), struct spte, elem);
 	hash_delete(&t->spt, &spte->elem);
+	clear_frame(pte_get_page(*to_find.pte));
 	free(spte);
+	*to_find.pte = *to_find.pte & ~PTE_P;
 	palloc_free_page(page);
 }
 
@@ -203,25 +218,41 @@ bool vm_install_page(void * upage, struct file * file, unsigned int offset, unsi
 
 void vm_init()
 {
+	ASSERT(sizeof(struct fte) == 8);
 	for (int i = 0; i < 32; i++)
 	{
-		frame_table[i] = palloc_get_page(0);
+		frame_table[i] = NULL;
+		/*frame_table[i] = palloc_get_page(0);
 		for (int j = 0; j < 512; j++)
 		{
 			frame_table[i][j].pte = NULL; //no pte currently using
 			frame_table[i][j].spt = NULL;
-		}
+		}*/
 	}
 }
 
 void register_frame(void * kpage, void * upage)
 {
 	void * pte = lookup_page(thread_current()->pagedir, upage, false);
-	frame_table[fd_no(kpage)][ft_no(kpage)].pte = pte;
-	frame_table[fd_no(kpage)][ft_no(kpage)].spt = &thread_current()->spt;
+	int fd = fd_no(kpage);
+	if (frame_table[fd] == NULL)
+	{
+		frame_table[fd] = palloc_get_page(0);
+		for (int i = 0; i < 512; i++)
+		{
+			frame_table[fd][i].pte = NULL;
+			frame_table[fd][i].spt = NULL;
+		}
+	}
+	ASSERT(pte != NULL);
+	ASSERT(frame_table[fd][ft_no(kpage)].pte == NULL);
+	frame_table[fd][ft_no(kpage)].pte = pte;
+	frame_table[fd][ft_no(kpage)].spt = &thread_current()->spt;
 }
 
 void clear_frame(void *kpage)
 {
-	frame_table[fd_no(kpage)][ft_no(kpage)].pte = NULL;
+	int fd = fd_no(kpage);
+	ASSERT(frame_table[fd] != NULL);
+	frame_table[fd][ft_no(kpage)].pte = NULL;
 }
