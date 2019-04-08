@@ -1,0 +1,210 @@
+		           +---------------------------+
+       	           |         CIS 520           |
+		           | PROJECT 3: Virtual Memory |
+		           |     DESIGN DOCUMENT       |
+		           +---------------------------+
+
+---- GROUP ----
+
+>> Fill in the names of your group members.
+
+Kyle Toom
+Alex Burroughs
+Caden Waters
+
+---- PRELIMINARIES ----
+
+>> If you have any preliminary comments on your submission, notes for the
+>> TAs, or extra credit, please give them here.
+
+>> Please cite any offline or online sources you consulted while
+>> preparing your submission, other than the Pintos documentation, course
+>> text, lecture notes, and course staff.
+
+			PAGE TABLE MANAGEMENT
+			=====================
+
+---- ALGORITHMS ----
+
+>> A1: In a few paragraphs, describe the existing code for locating the
+>> frame, if any, that contains the data of a given page.
+
+To simplify access to physical pages, every physical page is given a 1 to 1
+mapping starting at PHYS_BASE in kernel address space and going until the
+end of physical memory.
+
+---- SYNCHRONIZATION ----
+
+>> A2: When two user processes both need a new frame at the same time,
+>> how are races avoided?
+
+The one thing we need to synchronize during the page eviction process is
+finding the page to evict and marking it as evicted, as we can't have multiple
+threads choose to evict the same page at once. Since we have tried to make our
+find_page() function execute quickly, we just put a lock around that function call
+and let the rest of the page eviction process go unsynchronized.
+
+		       PAGING TO AND FROM DISK
+		       =======================
+
+---- ALGORITHMS ----
+
+>> B1: When a frame is required but none is free, some frame must be
+>> evicted.  Describe the algorithm used to choose a frame to evict.
+
+Our algorithm starts at whatever position was last looked at for frame eviction,
+which helps approximate the clock algorithm. It then looks through each frame table
+entry in our frame table and checks to see if the related page table entry is dirty
+or access, dividing such frame table entries into four different categories from 0
+(worst) to 3 (best). If a not dirty, not accessed page is found then we immediately
+return it as it is an optimal case. Otherwise, we keep going until we've looked at
+256 (arbitrary small number) frame table entries and return whichever entry we found
+that had the best type.
+
+>> B2: Explain your heuristic for deciding whether a page fault for an
+>> invalid virtual address should cause the stack to be extended into
+>> the page that faulted.
+
+The heuristic can be simplified to if the faulting address is lower than PHYS_BASE,
+higher than or equal to esp-30, and above PHYS_BASE - 8 megabytes. This way we know that
+page fault is on the stack and that the stack hasn't been arbitrarily extended past
+a reasonable length.
+
+			 MEMORY MAPPED FILES
+			 ===================
+
+---- DATA STRUCTURES ----
+
+>> C1: Copy here the declaration of each new or changed `struct' or
+>> `struct' member, global or static variable, `typedef', or
+>> enumeration.  Identify the purpose of each in 25 words or less.
+
+struct map_item
+{
+  int map_id;		// the map_id.
+  int page_num;		// how many pages are stored in this map_item.
+  void * page;		// address of the page
+  struct spte * spt_entry; // the structure for the supplemental page table entry.
+  struct list_elem elem;  //element for the list
+}; // this is the structure that holds the information about memory mapped files.
+
+struct thread
+  {
+    /* Owned by thread.c. */
+    tid_t tid;                          /* Thread identifier. */
+    enum thread_status status;          /* Thread state. */
+    char name[16];                      /* Name (for debugging purposes). */
+    uint8_t *stack;                     /* Saved stack pointer. */
+    int priority;                       /* Priority. */
+    struct list_elem allelem;           /* List element for all threads list. */
+
+    /* Shared between thread.c and synch.c. */
+    struct list_elem elem;              /* List element. */
+
+    #ifdef USERPROG
+      /* Owned by userprog/process.c. */
+      uint32_t *pagedir;                  /* Page directory. */
+      tid_t pid;
+      int cur_fd_num;
+      struct thread * parent;
+      struct list children;
+      struct list_elem parentelem;
+      tid_t waiting_on;
+      int status_code;
+      struct list open_files;
+      struct list_elem open_file_elem;
+      bool ready_to_clear;
+      struct file * executable_file;
+
+	    struct list mapped_list;		// the list that holds all memory mapped items.
+		int cur_mapid;					// counter that keeps track of the map_id.
+	    struct hash spt;				// supplemental page table
+    #endif
+
+    /* Owned by thread.c. */
+    unsigned magic;                     /* Detects stack overflow. */
+  };
+
+struct spte //supplemental page table entry
+{
+	struct file * file; //the file this data came from, or null if it came from none
+	unsigned int offset; //what byte in the file it was pulled from
+	bool mmapped; //whether or not this data is attached to a memory mapped file (for eviction)
+	bool zero; //whether pages are supposed to be zeroed or not
+	unsigned int length; //the length in bytes that this segment read from in the file
+	int *pte; //a page table entry that this is connected to
+	struct hash_elem elem; //for storing in a supplemental page hash table
+	bool writable; //whether this data is supposed to be writable or not
+	int swap_index; //the index of where this data is on the swap disk, or -1 if it is not there
+};
+
+struct fte //file table entry
+{
+	unsigned int *pte; //the corresponding page table entry
+	struct hash * spt; //the corresonding supplemental page table of the process that owns the data
+};
+
+static struct fte *frame_table[32]; //our frame table, 32*512 * 4096 byte = 64 megabytes
+
+struct swap_page
+{
+	bool taken; //whether or not this swap page entry is taken or not
+};
+
+struct swap_page * swap_table = NULL; //stores all of the slots for the swap table
+
+static unsigned int cur_fte_index = 0; //the next frame table entry that will be checked for eviction
+
+---- ALGORITHMS ----
+
+>> C2: Describe how memory mapped files integrate into your virtual
+>> memory subsystem.  Explain how the page fault and eviction
+>> processes differ between swap pages and other pages.
+
+Memory mapped files are almost identical to data segments loaded from files from
+a virtual memory standpoint. The main difference is that when evicted we write them
+to their original file instead of the swap disk, and that we write all our changes
+when the file is explicitely or implicitely unmapped.
+
+>> C3: Explain how you determine whether a new file mapping overlaps
+>> any existing segment.
+
+In the call to vm_install_page, it checks to make sure a new file mapping is
+only allocated for pages that are found that are free and unmapped. 
+If the call to vm_install_page fails it returns -1.
+
+---- RATIONALE ----
+
+>> C4: Mappings created with "mmap" have similar semantics to those of
+>> data demand-paged from executables, except that "mmap" mappings are
+>> written back to their original files, not to swap.  This implies
+>> that much of their implementation can be shared.  Explain why your
+>> implementation either does or does not share much of the code for
+>> the two situations.
+
+Most of our implementation is the same. The difference is handled in page.c in the function vm_get_page.
+It is just a simple if else to handle the small difference where all of the code outside if else is shared.
+
+			   SURVEY QUESTIONS
+			   ================
+
+Answering these questions is optional, but it will help us improve the
+course in future quarters.  Feel free to tell us anything you
+want--these questions are just to spur your thoughts.  You may also
+choose to respond anonymously in the course evaluations at the end of
+the quarter.
+
+>> In your opinion, was this assignment, or any one of the three problems
+>> in it, too easy or too hard?  Did it take too long or too little time?
+
+>> Did you find that working on a particular part of the assignment gave
+>> you greater insight into some aspect of OS design?
+
+>> Is there some particular fact or hint we should give students in
+>> future quarters to help them solve the problems?  Conversely, did you
+>> find any of our guidance to be misleading?
+
+>> Do you have any suggestions for the TAs to more effectively assist
+>> students, either for future quarters or the remaining projects?
+
+>> Any other comments?
