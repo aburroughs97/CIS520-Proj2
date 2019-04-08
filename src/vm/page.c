@@ -195,10 +195,10 @@ void vm_free_page(void * page)
 	to_find.pte = lookup_page(t->pagedir, page, false);
 	struct spte * spte = hash_entry(hash_find(&t->spt, &to_find.elem), struct spte, elem);
 	hash_delete(&t->spt, &spte->elem);
-	clear_frame(pte_get_page(*to_find.pte));
 	free(spte);
 	if(*to_find.pte&PTE_P)
 	{
+		clear_frame(pte_get_page(*to_find.pte));
 		palloc_free_page(pte_get_page(*to_find.pte));
 		*to_find.pte = *to_find.pte & ~PTE_P;
 	}
