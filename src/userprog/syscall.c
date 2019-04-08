@@ -192,6 +192,9 @@ exec (const char *file, void *esp)
 {
 	if (user_readable_string(file,esp))
 	{
+		struct file * f = filesys_open(file);
+		if (f == NULL) return -1;
+		file_close(f);
 		int a = process_execute(file);
 		if (a == TID_ERROR) return -1;
 		struct thread * t = get_thread(a);
@@ -200,13 +203,13 @@ exec (const char *file, void *esp)
 		thread_block();
 		intr_set_level(old_level);
 		thread_current()->waiting_on = 0;
-		/*if (t->status_code == -1)
+		if (t->status_code == -1)
 		{
 			t->parent = NULL;
 			list_remove(&t->parentelem);
 			cleanup_thread(t,true);
-			return -1;
-		}*/
+			//return -1;
+		}
 		return a;
 	}
 	else exit(-1);
