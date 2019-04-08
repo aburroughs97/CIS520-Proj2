@@ -177,14 +177,14 @@ page_fault (struct intr_frame *f)
 	  {
 		  if (fault_addr >= f->esp - 32)
 		  {
-			  if (vm_install_page(pg_round_down(fault_addr), NULL, 0, 0, true,true))
+			  if (vm_install_page(pg_round_down(fault_addr), NULL, 0, 0, true,true,false))
 			  {
 				  e = hash_find(&t->spt, &to_find.elem);
 			  }
 		  }
 	  }
 	  else if(fault_addr<PHYS_BASE&&fault_addr>f->esp){ //going above sometimes happens too
-		  if (vm_install_page(pg_round_down(fault_addr), NULL, 0, 0, true,true))
+		  if (vm_install_page(pg_round_down(fault_addr), NULL, 0, 0, true,true,false))
 		  {
 			  e = hash_find(&t->spt, &to_find.elem);
 		  }
