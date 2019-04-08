@@ -200,13 +200,13 @@ exec (const char *file, void *esp)
 		thread_block();
 		intr_set_level(old_level);
 		thread_current()->waiting_on = 0;
-		if (t->status_code == -1)
+		/*if (t->status_code == -1)
 		{
 			t->parent = NULL;
 			list_remove(&t->parentelem);
 			cleanup_thread(t,true);
 			return -1;
-		}
+		}*/
 		return a;
 	}
 	else exit(-1);
