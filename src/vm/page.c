@@ -138,23 +138,31 @@ void * vm_get_page(bool zero)
 		ASSERT((*fte->pte&PTE_ADDR) < PHYS_BASE);
 		if (*fte->pte&PTE_D)
 		{
-			int swap_page = get_swap_page();
-			//write out to sectors
-			struct block * swap_block = block_get_role(BLOCK_SWAP);
-			ASSERT(swap_block != NULL);
-			for (int i = 0; i < 8; i++)
-			{
-				block_write(swap_block, swap_page * 8 + i, pte_get_page(*fte->pte) + i * 512);
-			}
-			//get spte and tell it where its data is
 			struct spte to_find;
 			to_find.pte = fte->pte;
 			struct hash_elem * hash_elem = hash_find(fte->spt, &to_find.elem);
 			struct spte * spte = hash_entry(hash_elem, struct spte, elem);
 			ASSERT(hash_elem != NULL);
 			ASSERT(spte->swap_index == -1);
-			spte->swap_index = swap_page;
-			ASSERT(spte->pte == fte->pte);
+			if (spte->mmapped)
+			{
+				file_seek(spte->file, spte->offset);
+				file_write(spte->file, pte_get_page(*fte->pte), spte->length);
+			}
+			else {
+				int swap_page = get_swap_page();
+				//write out to sectors
+				struct block * swap_block = block_get_role(BLOCK_SWAP);
+				ASSERT(swap_block != NULL);
+				for (int i = 0; i < 8; i++)
+				{
+					block_write(swap_block, swap_page * 8 + i, pte_get_page(*fte->pte) + i * 512);
+				}
+				//get spte and tell it where its data is
+
+				spte->swap_index = swap_page;
+				ASSERT(spte->pte == fte->pte);
+			}
 			//invalidate page
 			*fte->pte = *fte->pte & (~PTE_P);
 			ASSERT(!(*fte->pte & PTE_P));
@@ -191,7 +199,7 @@ void vm_free_page(void * page)
 	}
 }
 
-bool vm_install_page(void * upage, struct file * file, unsigned int offset, unsigned int length, bool zero, bool writable)
+bool vm_install_page(void * upage, struct file * file, unsigned int offset, unsigned int length, bool zero, bool writable, bool mmapped)
 {
 	struct thread * t = thread_current();
 	void * page = lookup_page(t->pagedir, upage, true);
@@ -203,7 +211,7 @@ bool vm_install_page(void * upage, struct file * file, unsigned int offset, unsi
 		spte->pte = page;
 		spte->file = file;
 		spte->offset = offset;
-		spte->in_memory = false;
+		spte->mmapped = mmapped;
 		spte->length = length;
 		spte->zero = zero;
 		spte->writable = writable;

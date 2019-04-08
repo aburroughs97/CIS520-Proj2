@@ -581,7 +581,7 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
       //     vm_free_page (kpage);
       //     return false; 
       //   }
-	  if (!vm_install_page(upage, file, ofs, page_read_bytes, page_zero_bytes > 0,writable))
+	  if (!vm_install_page(upage, file, ofs, page_read_bytes, page_zero_bytes > 0,writable,false))
 	  {
 		  return false;
 	  }
@@ -607,7 +607,7 @@ setup_stack (void **esp)
   if (kpage != NULL) 
     {
 	  success = install_page(((uint8_t *)PHYS_BASE) - PGSIZE, kpage, true);
-	  success = success && vm_install_page(((uint8_t *)PHYS_BASE) - PGSIZE, NULL, 0, 0, true,true);
+	  success = success && vm_install_page(((uint8_t *)PHYS_BASE) - PGSIZE, NULL, 0, 0, true,true,false);
 	  if (success)
 	  {
 		  register_frame(kpage, ((uint8_t *)PHYS_BASE) - PGSIZE);
