@@ -162,7 +162,10 @@ page_fault (struct intr_frame *f)
   struct spte to_find;
   to_find.pte = lookup_page(t->pagedir, pg_round_down(fault_addr), false);
 
-  if (to_find.pte == NULL) exit(-1);
+  if (to_find.pte == NULL) 
+  { 
+     exit(-1);
+  }
   ASSERT(to_find.pte != NULL);
   ASSERT(!(*to_find.pte&PTE_P));
   struct hash_elem *e = hash_find(&t->spt, &to_find.elem);

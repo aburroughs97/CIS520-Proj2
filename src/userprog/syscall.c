@@ -461,16 +461,15 @@ munmap (mapid_t mapping)
     if(item->map_id == mapping)
     {
       struct spte *spt_entry = item->spt_entry;
-      file_seek(spt_entry->file, 0);
-      int i;
-      for(i = 0; i < item->page_num; i++)
+      
+      file_seek(item->spt_entry->file, 0);
+      file_write(item->spt_entry->file, item->page, file_length(item->spt_entry->file));
+
+      for(int i = 0; i < item->page_num; i++)
       {
-        if(pagedir_is_dirty(t->pagedir, (item->page + PGSIZE * i))) 
-        {
-          file_write_at(item->spt_entry->file, item->page + PGSIZE * i, PGSIZE, PGSIZE * i);
-        }
         vm_free_page(item->page + PGSIZE * i);
       }
+      
       e = list_remove(&item->elem);
       
       free(item);
