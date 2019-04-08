@@ -192,9 +192,6 @@ exec (const char *file, void *esp)
 {
 	if (user_readable_string(file,esp))
 	{
-		struct file * f = filesys_open(file);
-		if (f == NULL) return -1;
-		file_close(f);
 		int a = process_execute(file);
 		if (a == TID_ERROR) return -1;
 		struct thread * t = get_thread(a);
