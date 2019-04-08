@@ -7,6 +7,7 @@
 #include <hash.h>
 #include "devices/block.h"
 #include "threads/vaddr.h"
+#include "threads/synch.h"
 #include <debug.h>
 
 struct fte
@@ -76,6 +77,7 @@ void free_swap_page(int page)
 }
 
 static unsigned int cur_fte_index = 0;
+static struct lock cur_fte_lock;
 
 struct fte * find_page()
 {
@@ -132,7 +134,10 @@ void * vm_get_page(bool zero)
 	if (page == NULL)
 	{
 		//evict
+		lock_acquire(&cur_fte_lock);
 		struct fte * fte = find_page();
+		lock_release(&cur_fte_lock);
+
 		ASSERT(fte != NULL);
 		ASSERT(fte->pte != NULL);
 		ASSERT((*fte->pte&PTE_ADDR) < PHYS_BASE);
@@ -229,16 +234,11 @@ bool vm_install_page(void * upage, struct file * file, unsigned int offset, unsi
 
 void vm_init()
 {
+	lock_init(&cur_fte_lock);
 	ASSERT(sizeof(struct fte) == 8);
 	for (int i = 0; i < 32; i++)
 	{
 		frame_table[i] = NULL;
-		/*frame_table[i] = palloc_get_page(0);
-		for (int j = 0; j < 512; j++)
-		{
-			frame_table[i][j].pte = NULL; //no pte currently using
-			frame_table[i][j].spt = NULL;
-		}*/
 	}
 }
 
